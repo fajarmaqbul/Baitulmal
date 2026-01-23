@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Muzaki extends Model
+{
+    protected $table = 'muzaki';
+
+    protected $fillable = [
+        'rt_id',
+        'nama',
+        'jumlah_jiwa',
+        'jumlah_beras_kg',
+        'status_bayar',
+        'tahun',
+        'tanggal_bayar',
+    ];
+
+    protected $casts = [
+        'jumlah_jiwa' => 'integer',
+        'jumlah_beras_kg' => 'decimal:2',
+        'tahun' => 'integer',
+        'tanggal_bayar' => 'date',
+    ];
+
+    /**
+     * Get the RT that owns this Muzaki
+     */
+    public function rt(): BelongsTo
+    {
+        return $this->belongsTo(RT::class, 'rt_id');
+    }
+
+    /**
+     * Get all Zakat Fitrah payments for this Muzaki
+     */
+    public function zakatFitrah(): HasMany
+    {
+        return $this->hasMany(ZakatFitrah::class, 'muzaki_id');
+    }
+
+    /**
+     * Check if this Muzaki has paid (lunas)
+     */
+    public function isPaid(): bool
+    {
+        return $this->status_bayar === 'lunas';
+    }
+
+    /**
+     * Get total paid amount
+     */
+    public function getTotalPaidAttribute(): float
+    {
+        return $this->zakatFitrah()->sum('jumlah_kg');
+    }
+}

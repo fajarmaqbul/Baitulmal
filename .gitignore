@@ -1,0 +1,10 @@
+node_modules/
+vendor/
+.env
+*.log
+dist/
+build/
+.vscode/
+tmp/
+.DS_Store
+storage/*.key

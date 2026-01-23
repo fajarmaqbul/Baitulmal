@@ -1,0 +1,508 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Corporate Palette - Navy & White */
+  --primary: #0f2b46;
+  /* Deep Corporate Navy */
+  --primary-hover: #0a1f33;
+  --secondary: #6c757d;
+  --success: #198754;
+  --info: #0dcaf0;
+  --warning: #ffc107;
+  --danger: #dc3545;
+
+  --background: #f4f6f9;
+  /* AdminLTE Default Light BG */
+  --sidebar-bg: #0f2b46;
+  /* Navy Sidebar */
+  --sidebar-text: #c2c7d0;
+
+  --card-bg: #ffffff;
+  --card-border: 1px solid rgba(0, 0, 0, 0.08);
+  /* Subtle border for corporate look */
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* Minimal shadow */
+
+  --text-main: #212529;
+  --text-muted: #6c757d;
+
+  --bs-primary: #0f2b46;
+  /* Bootstrap Override */
+  --bs-primary-rgb: 15, 43, 70;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--background);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand-font {
+  font-family: 'Inter', sans-serif;
+  /* Clean corporate font everywhere */
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+h4 {
+  margin-left: 1rem;
+}
+
+/* Card Overrides for Corporate Look */
+.card,
+.glass-card {
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: 4px;
+  /* Sharper corners */
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
+}
+
+.glass-card {
+  /* Resetting glassmorphism to plain white for corporate */
+  backdrop-filter: none;
+}
+
+/* Utility Helpers */
+.text-justify {
+  text-align: justify;
+}
+
+/* AdminLTE Content Wrapper Fixes */
+.app-content {
+  padding: 1.5rem;
+  background-color: var(--background);
+  min-height: calc(100vh - 56px - 57px);
+}
+
+/* Button Refinement */
+.btn {
+  border-radius: 4px;
+  /* Sharper buttons */
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* Stats/KPI Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1.5rem;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Table Refinements - Clean Corporate Look */
+.table-container {
+  background: white;
+  border-radius: 6px;
+  /* Slightly smoother */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  /* Ensures borders/corners wrap table */
+  margin-bottom: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+table,
+.table-modern {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+thead {
+  background-color: #f8f9fa;
+}
+
+th {
+  padding: 1rem 1.25rem;
+  color: #495057;
+  /* Dark gray for contrast */
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #dee2e6;
+  /* Settle border */
+  text-align: left;
+}
+
+td {
+  padding: 1rem 1.25rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f5;
+  color: var(--text-main);
+  font-size: 0.875rem;
+}
+
+/* Row Hover Effect */
+tbody tr {
+  transition: background-color 0.15s ease-in-out;
+}
+
+tbody tr:hover {
+  background-color: #f8f9fa;
+  /* Subtle hover highlight */
+}
+
+/* Remove border from last row */
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Compact specific overrides if needed */
+.table-compact th,
+.table-compact td {
+  padding: 0.75rem 1rem;
+}
+
+/* Status Badges in Table */
+td .badge {
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.35em 0.65em;
+  border-radius: 4px;
+}
+
+.form-control,
+.input {
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  padding: 0.5rem 0.75rem;
+}
+
+.form-control:focus,
+.input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.2rem rgba(15, 43, 70, 0.15);
+}
+
+/* Alert & Helpers */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.alert-danger {
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  color: #c53030;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25em 0.6em;
+  font-size: 75%;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+.badge-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.py-8 {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+
+.input-error {
+  border-color: var(--danger) !important;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: inherit;
+}
+
+.btn-icon:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* --- Print Styles (Optimized for Production) --- */
+@page {
+  size: A4 portrait;
+  margin: 20mm 25mm !important;
+  /* Standar Margin Laporan */
+}
+
+@media print {
+
+  /* Reset and Layout */
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    width: 210mm;
+    height: auto !important;
+    /* Changed from 297mm to auto for multi-page support */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Structural Visibility Control - Ensure white-out doesn't hide desired content */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-wrapper,
+  .print-wrapper *,
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+
+  .print-wrapper {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Force Hide Elements */
+  .no-print,
+  .sidebar,
+  .header,
+  .btn,
+  .glass-card:not(.print-area),
+  button,
+  input,
+  nav {
+    display: none !important;
+  }
+
+  /* Clean up glass-card effects for print */
+  .glass-card {
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  /* Professional Table Styling for Print */
+  .table-print-boxed {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 20px !important;
+    table-layout: fixed !important;
+  }
+
+  .table-print-boxed th,
+  .table-print-boxed td {
+    border: 1px solid #000 !important;
+    padding: 8px 10px !important;
+    font-size: 10pt !important;
+    color: #000 !important;
+    word-wrap: break-word !important;
+  }
+
+  .table-print-boxed th {
+    background-color: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-weight: bold !important;
+    text-align: center !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+    /* Repeat header on every page */
+  }
+
+  /* Ensure rows don't break across pages awkwardly */
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  /* Signature Section */
+  .signature-grid {
+    display: table !important;
+    /* Fix for layout in some engines */
+    width: 100% !important;
+    margin-top: 40px !important;
+  }
+
+  .signature-col {
+    display: table-cell !important;
+    width: 50% !important;
+    text-align: center !important;
+  }
+}
+
+.signature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.signature-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.signature-title {
+  font-weight: 700;
+  margin-bottom: 5rem;
+}
+
+.signature-name {
+  font-weight: 700;
+  text-decoration: underline;
+  text-transform: uppercase;
+}
+
+.print-only {
+  display: none;
+}

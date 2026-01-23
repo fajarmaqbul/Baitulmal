@@ -1,0 +1,77 @@
+@media print {
+
+    /* Ensure print area is formatted correctly */
+    .print-area {
+        background: white;
+        color: black;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Utility to hide elements specifically during print */
+    .no-print {
+        display: none !important;
+    }
+
+    /* Force print-only elements to be visible */
+    .print-only {
+        display: block !important;
+    }
+
+    /* Print-specific table styling */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10pt;
+    }
+
+    th,
+    td {
+        border: 1px solid #000;
+        padding: 4px 8px;
+    }
+
+    th {
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Page break utilities */
+    .page-break {
+        page-break-before: always;
+    }
+
+    .avoid-break {
+        page-break-inside: avoid;
+    }
+
+    /* Signature Section Grid */
+    .signature-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 3rem;
+        page-break-inside: avoid;
+    }
+
+    .signature-item {
+        text-align: center;
+    }
+
+    .signature-title {
+        font-weight: bold;
+        margin-bottom: 4rem;
+    }
+
+    .signature-name {
+        font-weight: bold;
+        text-decoration: underline;
+    }
+}
+
+/* Utilities for screen view */
+.print-only {
+    display: none;
+}

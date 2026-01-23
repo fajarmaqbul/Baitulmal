@@ -1,0 +1,119 @@
+.official-document {
+    padding: 2cm;
+    background: white;
+    font-family: 'Times New Roman', serif;
+    color: black;
+    line-height: 1.5;
+}
+
+.letterhead {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.letterhead .logo {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.letterhead .org-info {
+    text-align: center;
+    flex: 1;
+}
+
+.letterhead h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #1e3a8a;
+}
+
+.letterhead h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.letterhead p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.divider {
+    border-top: 2px solid black;
+    border-bottom: 0.5px solid black;
+    height: 3px;
+    margin: 0.5rem 0 1.5rem 0;
+}
+
+.document-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.document-header .title {
+    font-size: 1.4rem;
+    text-transform: uppercase;
+    text-decoration: underline;
+    margin-bottom: 0.25rem;
+}
+
+.document-header .doc-no {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.document-body {
+    min-height: 300px;
+    font-size: 1.1rem;
+}
+
+.document-footer {
+    margin-top: 3rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.signature-section {
+    width: 250px;
+    text-align: center;
+}
+
+.sign-info {
+    margin-bottom: 4rem;
+}
+
+.signature-space {
+    height: 1.5cm;
+}
+
+.signer-name strong {
+    font-size: 1.1rem;
+}
+
+.sk-no {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #444;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .official-document,
+    .official-document * {
+        visibility: visible;
+    }
+
+    .official-document {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+    }
+}
