@@ -9,7 +9,6 @@ use App\Models\Correspondence;
 use App\Models\RT;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Services\GoogleDocsService;
 
 class CorrespondenceController extends Controller
 {
@@ -179,25 +178,11 @@ class CorrespondenceController extends Controller
         return response()->json(['html' => $html]);
     }
 
-    public function exportToGoogleDoc(Request $request, $id, GoogleDocsService $docsService)
+    public function exportToGoogleDoc(Request $request, $id)
     {
-        $correspondence = Correspondence::findOrFail($id);
-        
-        try {
-            $link = $docsService->createDocument(
-                $correspondence->perihal ?? 'Untitled Document',
-                $correspondence->isi_surat
-            );
-            
-            return response()->json([
-                'success' => true,
-                'link' => $link
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Google Docs export is not available in this environment.',
+        ], 503);
     }
 }

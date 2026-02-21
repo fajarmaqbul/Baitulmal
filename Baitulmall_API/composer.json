@@ -11,7 +11,6 @@
     "require": {
         "php": "^8.2",
         "doctrine/dbal": "^4.4",
-        "google/apiclient": "^2.19",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1"
@@ -76,11 +75,7 @@
     "extra": {
         "laravel": {
             "dont-discover": []
-        },
-        "google/apiclient-services": [
-            "Docs",
-            "Drive"
-        ]
+        }
     },
     "config": {
         "optimize-autoloader": true,
