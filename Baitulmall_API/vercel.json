@@ -1,5 +1,6 @@
 {
     "version": 2,
+    "name": "baitulmal-api",
     "functions": {
         "api/index.php": {
             "runtime": "vercel-php@0.7.0"
