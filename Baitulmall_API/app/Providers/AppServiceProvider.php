@@ -20,8 +20,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (config('database.default') === 'sqlite') {
-            \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA journal_mode=WAL;');
-            \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA synchronous=NORMAL;');
+            $dbPath = config('database.connections.sqlite.database');
+            if (file_exists($dbPath)) {
+                \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA journal_mode=WAL;');
+                \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA synchronous=NORMAL;');
+            }
         }
     }
 }
