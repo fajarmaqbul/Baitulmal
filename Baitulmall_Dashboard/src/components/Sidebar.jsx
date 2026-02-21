@@ -9,12 +9,17 @@ import {
     ShieldCheck,
     LayoutDashboard,
     Coins,
-    Map
+    Map,
+    Box,
+    ArrowLeftRight,
+    ShoppingBag
 } from 'lucide-react';
 
 const Sidebar = () => {
     const menuItems = [
         { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
+        { name: 'Inventaris Aset', icon: <Box size={20} />, path: '/inventory' },
+        { name: 'Peminjaman', icon: <ArrowLeftRight size={20} />, path: '/inventory/loans' },
         { name: 'Zakat Fitrah', icon: <Gift size={20} />, path: '/zakat-fitrah' },
         { name: 'Sedekah', icon: <Heart size={20} />, path: '/sedekah' },
         { name: 'Santunan', icon: <ShieldCheck size={20} />, path: '/santunan' },
@@ -23,6 +28,7 @@ const Sidebar = () => {
         { name: 'Peta Asnaf', icon: <Map size={20} />, path: '/peta-asnaf' },
         { name: 'Kepengurusan', icon: <Wallet size={20} />, path: '/kepengurusan' },
         { name: 'Kependudukan', icon: <Users size={20} />, path: '/kependudukan' },
+        { name: 'Etalase UMKM', icon: <ShoppingBag size={20} />, path: '/etalase' },
     ];
 
     return (
@@ -40,10 +46,10 @@ const Sidebar = () => {
                     fontSize: '1.25rem',
                     fontWeight: 800
                 }}>B</div>
-                <span style={{ color: '#fff' }}>BAITULMALL</span>
+                <span style={{ color: 'var(--sidebar-text)' }}>BAITULMAL</span>
             </div>
 
-            <nav>
+            <nav className="sidebar-nav">
                 <ul className="nav-links">
                     {menuItems.map((item) => (
                         <li key={item.path}>
@@ -59,10 +65,10 @@ const Sidebar = () => {
                 </ul>
             </nav>
 
-            <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ fontSize: '0.7rem', color: 'var(--sidebar-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>User Account</p>
+            <div style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>User Account</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', marginTop: '0.25rem' }}>Administrator</p>
+                    <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginTop: '0.25rem' }}>Administrator</p>
                     <NavLink to="/preference" style={{ color: 'var(--text-muted)', cursor: 'pointer' }} title="User Preferences">
                         <LayoutDashboard size={18} />
                     </NavLink>

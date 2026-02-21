@@ -58,4 +58,12 @@ class Muzaki extends Model
     {
         return $this->zakatFitrah()->sum('jumlah_kg');
     }
+
+    /**
+     * Get Zakat Calculation Histories
+     */
+    public function zakatCalculationHistories(): HasMany
+    {
+        return $this->hasMany(ZakatCalculationHistory::class);
+    }
 }

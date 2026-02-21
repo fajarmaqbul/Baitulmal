@@ -25,9 +25,19 @@ class Asnaf extends Model
         'alamat',
         'no_wa',
         'status',
+        'pendapatan',
+        'kondisi_rumah',
+        'status_rumah_detail',
+        'kondisi_bangunan',
+        'fasilitas_dasar',
+        'score',
+        'scoring_details',
+        'custom_criteria',
     ];
 
     protected $casts = [
+        'scoring_details' => 'array',
+        'custom_criteria' => 'array',
         'jumlah_jiwa' => 'integer',
         'tahun' => 'integer',
         'latitude' => 'decimal:8',

@@ -52,12 +52,7 @@ class SettingSeeder extends Seeder
                 'type' => 'string',
                 'description' => 'Alamat lengkap untuk footer surat-surat resmi'
             ],
-            [
-                'key_name' => 'default_signer_ketua',
-                'value' => 'Bpk. H. Ahmad',
-                'type' => 'string',
-                'description' => 'Nama Ketua Umum untuk tanda tangan laporan'
-            ],
+
             [
                 'key_name' => 'app_logo_url',
                 'value' => 'https://adminlte.io/themes/v3/dist/img/AdminLTELogo.png',

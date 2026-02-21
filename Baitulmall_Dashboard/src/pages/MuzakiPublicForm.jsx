@@ -125,7 +125,7 @@ const MuzakiPublicForm = () => {
                     </div>
                     <h2 className="text-3xl font-bold text-slate-800 mb-2">Pendaftaran Berhasil!</h2>
                     <p className="text-slate-600 mb-8 max-w-sm mx-auto">
-                        Data Anda telah kami terima. Silakan lakukan pembayaran ke petugas Baitulmall
+                        Data Anda telah kami terima. Silakan lakukan pembayaran ke petugas Baitulmal
                         di Masjid atau melalui RT setempat untuk verifikasi akhir.
                     </p>
                     <button
@@ -136,7 +136,7 @@ const MuzakiPublicForm = () => {
                         Daftar Lainnya
                     </button>
                 </div>
-                <p className="mt-8 text-white/70 text-sm">© {new Date().getFullYear()} Baitulmall Masjid Kandri</p>
+                <p className="mt-8 text-white/70 text-sm">© {new Date().getFullYear()} Baitulmal Masjid Kandri</p>
             </div>
         );
     }
@@ -151,7 +151,7 @@ const MuzakiPublicForm = () => {
                         </div>
                     </div>
                     <h1 className="text-4xl font-extrabold text-white mb-2 drop-shadow-md">Daftar Zakat</h1>
-                    <p className="text-blue-100 text-lg opacity-90">Baitulmall Masjid Kandri</p>
+                    <p className="text-blue-100 text-lg opacity-90">Baitulmal Masjid Kandri</p>
                     <div className="mt-2 inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/20">
                         <span className="text-white text-xs font-bold uppercase tracking-wider">Ramadhan {formData.tahun}</span>
                     </div>
@@ -222,7 +222,7 @@ const MuzakiPublicForm = () => {
 
                         <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 mb-2">
                             <p className="text-xs text-blue-700 leading-relaxed italic">
-                                * Pendaftaran online akan kami verifikasi saat pembayaran diterima oleh petugas Baitulmall.
+                                * Pendaftaran online akan kami verifikasi saat pembayaran diterima oleh petugas Baitulmal.
                                 Estimasi zakat fitrah: {formData.jumlah_jiwa ? (parseFloat(formData.jumlah_jiwa) * 2.5).toFixed(1) : '0'} KG Beras.
                             </p>
                         </div>
@@ -248,7 +248,7 @@ const MuzakiPublicForm = () => {
                 </div>
 
                 <p className="mt-8 text-center text-white/70 text-sm">
-                    Butuh bantuan? Hubungi Sekretariat Baitulmall.
+                    Butuh bantuan? Hubungi Sekretariat Baitulmal.
                 </p>
             </div>
 

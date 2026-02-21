@@ -5,16 +5,19 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Asnaf;
 use App\Services\AsnafStatisticsService;
+use App\Services\ScoringService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class AsnafController extends Controller
 {
     protected $statisticsService;
+    protected $scoringService;
 
-    public function __construct(AsnafStatisticsService $statisticsService)
+    public function __construct(AsnafStatisticsService $statisticsService, ScoringService $scoringService)
     {
         $this->statisticsService = $statisticsService;
+        $this->scoringService = $scoringService;
     }
 
     /**
@@ -71,9 +74,23 @@ class AsnafController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string',
             'status' => 'nullable|in:active,inactive',
+            'pendapatan' => 'nullable|numeric',
+            'kondisi_rumah' => 'nullable|string',
+            // New Detailed Scoring Fields
+            'status_rumah_detail' => 'nullable|in:milik_layak,milik_tak_layak,sewa,numpang',
+            'kondisi_bangunan' => 'nullable|in:permanen_baik,semi_permanen,tidak_permanen',
+            'fasilitas_dasar' => 'nullable|in:layak,salah_satu_terbatas,keduanya_terbatas',
+            'custom_criteria' => 'nullable|array',
         ]);
 
-        $asnaf = Asnaf::create($validated);
+        $asnaf = new Asnaf($validated);
+
+        // Calculate Score
+        $scoreResult = $this->scoringService->calculateScore($asnaf);
+        $asnaf->score = $scoreResult['total_score'];
+        $asnaf->scoring_details = $scoreResult['details'];
+
+        $asnaf->save();
 
         return response()->json([
             'message' => 'Asnaf created successfully',
@@ -115,9 +132,26 @@ class AsnafController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string',
             'status' => 'sometimes|in:active,inactive',
+            'pendapatan' => 'nullable|numeric',
+            'kondisi_rumah' => 'nullable|string',
+            // New Detailed Scoring Fields
+            'status_rumah_detail' => 'nullable|in:milik_layak,milik_tak_layak,sewa,numpang',
+            'kondisi_bangunan' => 'nullable|in:permanen_baik,semi_permanen,tidak_permanen',
+            'fasilitas_dasar' => 'nullable|in:layak,salah_satu_terbatas,keduanya_terbatas',
+            'custom_criteria' => 'nullable|array',
         ]);
 
-        $asnaf->update($validated);
+        $asnaf->fill($validated);
+
+        // Recalculate Score if relevant fields change
+        // Added new fields, removed jumlah_jiwa as it's no longer used for scoring
+        if ($request->hasAny(['pendapatan', 'status_rumah_detail', 'kondisi_bangunan', 'fasilitas_dasar', 'custom_criteria'])) {
+            $scoreResult = $this->scoringService->calculateScore($asnaf);
+            $asnaf->score = $scoreResult['total_score'];
+            $asnaf->scoring_details = $scoreResult['details'];
+        }
+
+        $asnaf->save();
 
         return response()->json([
             'message' => 'Asnaf updated successfully',
@@ -173,5 +207,21 @@ class AsnafController extends Controller
             'total' => count($mapData),
             'data' => $mapData,
         ]);
+    }
+
+    public function recalculateScores()
+    {
+        $asnafs = Asnaf::where('status', 'active')->get();
+        $count = 0;
+
+        foreach ($asnafs as $asnaf) {
+            $scoreResult = $this->scoringService->calculateScore($asnaf);
+            $asnaf->score = $scoreResult['total_score'];
+            $asnaf->scoring_details = $scoreResult['details'];
+            $asnaf->save();
+            $count++;
+        }
+
+        return response()->json(['message' => "Recalculated scores for $count records"]);
     }
 }

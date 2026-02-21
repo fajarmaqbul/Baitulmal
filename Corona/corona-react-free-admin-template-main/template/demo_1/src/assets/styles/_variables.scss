@@ -1,0 +1,367 @@
+////////// COLOR SYSTEM //////////
+
+// Baitulmal "Calm & Modern" Palette
+$emerald-50: #ecfdf5;
+$emerald-100: #d1fae5;
+$emerald-200: #a7f3d0;
+$emerald-300: #6ee7b7;
+$emerald-400: #34d399;
+$emerald-500: #10b981;
+$emerald-600: #059669;
+$emerald-700: #15803d; // Primary Brand Color
+$emerald-800: #065f46;
+$emerald-900: #064e3b;
+
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6; // Main Dashboard BG
+$gray-200: #e5e7eb; // Borders
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280; // Muted Text
+$gray-600: #4b5563;
+$gray-700: #374151; // Main Text
+$gray-800: #1f2937;
+$gray-900: #111827;
+
+$blue: #3b82f6;
+$indigo: #6366f1;
+$purple: #8b5cf6;
+$pink: #ec4899;
+$red: #ef4444;
+$orange: #f97316;
+$yellow: #eab308;
+$green: $emerald-500;
+$teal: #14b8a6;
+$cyan: #06b6d4;
+$white: #ffffff;
+$black: #000000;
+
+$colors: (
+  blue: $blue,
+  indigo: $indigo,
+  purple: $purple,
+  pink: $pink,
+  red: $red,
+  orange: $orange,
+  yellow: $yellow,
+  green: $green,
+  teal: $teal,
+  cyan: $cyan,
+  white: $white,
+  gray: $gray-600,
+  gray-light: $gray-400,
+  gray-lighter: $gray-200,
+  gray-lightest: $gray-100,
+  gray-dark: $gray-800,
+  black: $black
+);
+
+
+$theme-colors: (
+  primary: $emerald-700,
+  secondary: $gray-200,
+  success: $emerald-600,
+  info: $blue,
+  warning: $yellow,
+  danger: $red,
+  light: $gray-50,
+  dark: $gray-900
+);
+
+
+////////// COLOR VARIABLES //////////
+$content-bg: #f3f4f6; // Cool, calm light gray
+$footer-bg: $content-bg;
+$footer-color: $gray-500;
+$border-color: #e5e7eb; // Soft border
+$circle-border: $emerald-200;
+
+// Social Colors - Keeping standard brands but can be adjusted if needed
+$social-colors: (
+  twitter: #2caae1,
+  facebook: #3b579d,
+  google: #dc4a38,
+  linkedin: #0177b5,
+  pinterest: #cc2127,
+  youtube: #e52d27,
+  github: #333333,
+  behance: #1769ff,
+  dribbble: #ea4c89,
+  reddit: #ff4500
+);
+
+////////// FONTS //////////
+
+$type1: 'Inter', 'Rubik', sans-serif; // switched to Inter for better readability if available, fallback to Rubik
+
+$font-weight-light: 300;
+$font-weight-medium: 500;
+$font-weight-bold: 600; // Slightly less heavy bold
+
+$default-font-size: .875rem;
+
+$text-muted: $gray-500;
+$body-color: $gray-700; // Dark gray, easier on eyes than absolute black
+
+////////// CONTENT WRAPPER //////////
+
+$content-padding: 2rem; // More breathing room
+
+////////// SIDEBAR ////////
+$sidebar-width-lg: 260px;
+$sidebar-width-mini: 185px;
+$sidebar-width-icon: 70px;
+
+$sidebar-bg: #ffffff; // White sidebar
+$sidebar-menu-color: $gray-500;
+$sidebar-menu-active-bg: $emerald-50; // Very light green background for active
+$sidebar-menu-active-color: $emerald-700; // Green text for active
+$sidebar-menu-hover-bg: $gray-50;
+$sidebar-menu-hover-color: $gray-900;
+$sidebar-submenu-color: $gray-500;
+$sidebar-submenu-hover-bg: initial;
+$sidebar-submenu-hover-color: $emerald-700;
+
+$sidebar-menu-icon-color: $gray-400;
+$sidebar-menu-arrow-color: $gray-400;
+
+$sidebar-menu-font-size: 0.9375rem;
+$sidebar-menu-padding-y: 0.85rem;
+$sidebar-menu-padding-x: 1.5rem;
+$rtl-sidebar-submenu-padding: 0 1.5rem 0 0;
+
+$sidebar-submenu-font-size: 0.875rem;
+$sidebar-submenu-item-padding: 0.5rem 0.5rem;
+
+$sidebar-icon-font-size: 1.1rem;
+$sidebar-arrow-font-size: .625rem;
+
+$sidebar-profile-bg: transparent;
+$sidebar-profile-padding: 1rem 1.5rem;
+
+$sidebar-mini-menu-padding: .8125rem 1rem .8125rem 1rem;
+
+$sidebar-icon-only-menu-padding: .5rem 1.625rem .5rem 1.188rem;
+$sidebar-icon-only-submenu-padding: 0 0 0 1.5rem;
+
+$icon-only-collapse-width: 190px;
+$icon-only-menu-bg: $sidebar-bg;
+
+///////// NAVBAR ////////
+
+$navbar-height: 70px;
+$navbar-bg: #ffffff;
+$navbar-menu-color: $gray-700;
+$navbar-font-size: .9375rem;
+$navbar-icon-font-size: 1.25rem;
+$navbar-box-shadow: 0 1px 15px rgba(0, 0, 0, 0.04); // Much softer shadow
+
+///////// CARD ////////
+$card-bg: #ffffff;
+$card-description-color: $gray-500;
+$card-title-color: $gray-900;
+$card-border-radius: 0.5rem; // Slightly more rounded
+$card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); // Soft tailwind style shadow
+
+///////// BUTTONS ////////
+
+$button-fixed-width: 150px;
+$btn-padding-y: .5rem;
+$btn-padding-x: 1rem;
+$btn-line-height: 1.25;
+
+$btn-padding-y-xs: .5rem;
+$btn-padding-x-xs: .75rem;
+
+$btn-padding-y-sm: .25rem;
+$btn-padding-x-sm: .5rem;
+
+$btn-padding-y-lg: 1rem;
+$btn-padding-x-lg: 3rem;
+
+$btn-font-size: 0.9375rem;
+$btn-font-size-xs: 0.625rem;
+$btn-font-size-sm: 0.875rem;
+$btn-font-size-lg: 0.875rem;
+
+$btn-border-radius: .375rem;
+$btn-border-radius-xs: .25rem;
+$btn-border-radius-sm: .25rem;
+$btn-border-radius-lg: .5rem;
+
+////////// TOOLTIP VARIABLES //////////
+
+$tooltip-font-size: .75rem;
+$tooltip-padding-y: .4rem;
+$tooltip-padding-x: .75rem;
+$tooltip-border-radius: .375rem;
+$popover-bg: $white;
+$popover-border-color: $border-color;
+$popover-arrow-color: $popover-bg;
+$popover-arrow-outer-color: $popover-border-color;
+$popover-header-bg: $popover-bg;
+
+/////////  FORMS /////////
+
+$input-bg: #f9fafb; // Very light gray
+$input-border-radius: 0.375rem;
+$input-border-color: $gray-300;
+$input-placeholder-color: $gray-400;
+$input-placeholder-font-size: 0.875rem;
+$input-font-size: 0.875rem;
+
+$input-padding-y: 0.6rem;
+$input-padding-x: 0.75rem;
+$input-line-height: 1.5;
+
+$input-padding-y-xs: .5rem;
+$input-padding-x-xs: .75rem;
+
+$input-padding-y-sm: .50rem;
+$input-padding-x-sm: .81rem;
+
+$input-padding-y-lg: .94rem;
+$input-padding-x-lg: 1.94rem;
+
+$input-height: 2.875rem;
+$input-height-sm: 2.575rem;
+$input-height-lg: 3.175rem;
+
+////////  DROPDOWNS ///////
+
+$dropdown-bg: $white;
+$dropdown-color: $gray-700;
+$dropdown-item-hover-color: $gray-900;
+$dropdown-border-color: $border-color;
+$dropdown-divider-bg: $border-color;
+$dropdown-link-color: $gray-700;
+$dropdown-link-hover-bg: $gray-50;
+$dropdown-header-color: $gray-900;
+$dropdown-menu-box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+////////  PROGRESSBAR ///////
+$progress-bg: $gray-200;
+
+//////// TABLES ////////
+
+$table-accent-bg: $gray-50;
+$table-hover-bg: $gray-50;
+$table-cell-padding: 1rem;
+$table-border-color: $gray-200;
+
+$table-inverse-bg: $gray-800;
+$table-inverse-color: $white;
+
+////////// MEASUREMENT AND PROPERTY VARIABLES //////////
+
+$border-property: 1px solid $border-color;
+$card-spacing-y: 1.5rem;
+$card-padding-y: 1.5rem;
+$card-padding-x: 1.5rem;
+$card-description-color: $text-muted;
+$grid-gutter-width: 1.5rem;
+$action-transition-duration: 0.25s;
+$action-transition-timing-function: ease;
+$card-bg-varient: #fff;
+$border-width: 1px;
+
+////////// BREAD CRUMBS VARIABLES //////////
+
+$breadcrumb-padding-y: 0.56rem;
+$breadcrumb-padding-x: 1.13rem;
+$breadcrumb-item-padding: .5rem;
+$breadcrumb-margin-bottom: 1rem;
+$breadcrumb-font-size: $default-font-size;
+$breadcrumb-bg: transparent;
+$breadcrumb-border-color: $border-color;
+$breadcrumb-divider-color: $gray-400;
+$breadcrumb-active-color: $gray-600;
+$breadcrumb-divider: "/";
+
+$breadcrumb-custom-padding-y: 0;
+$breadcrumb-custom-padding-x: 0;
+$breadcrumb-custom-item-padding-y: 0.56rem;
+$breadcrumb-custom-item-padding-x: 10px;
+$breadcrumb-custom-item-color: $gray-600;
+$breadcrumb-item-bg: $gray-100;
+
+////////// MODALS VARIABLES //////////
+
+$modal-inner-padding: 1.5rem;
+$modal-dialog-margin: 10px;
+$modal-dialog-margin-y-sm-up: 30px;
+$modal-title-line-height: 1.5;
+$modal-content-bg: $white;
+$modal-content-box-shadow-xs: 0 3px 9px rgba($black, .1);
+$modal-content-box-shadow-sm-up: 0 5px 15px rgba($black, .1);
+
+$modal-backdrop-bg: $black;
+$modal-backdrop-opacity: .5;
+
+$modal-header-border-color: $border-color;
+$modal-content-border-color: $border-color;
+$modal-footer-border-color: $border-color;
+
+$modal-header-border-width: $border-width;
+$modal-content-border-width: $border-width;
+$modal-footer-border-width: $border-width;
+
+$modal-header-padding-x: 26px;
+$modal-header-padding-y: 25px;
+
+$modal-body-padding-x: 26px;
+$modal-body-padding-y: 35px;
+
+$modal-footer-padding-x: 31px;
+$modal-footer-padding-y: 15px;
+
+$modal-lg: 90%;
+$modal-md: 500px;
+$modal-sm: 300px;
+$modal-transition: transform .4s ease;
+
+/////////  PAGINATION VARIABLES //////////
+$pagination-bg: $white;
+
+/////////  TABS VARIABLES //////////
+$nav-tabs-border-color: $border-color;
+$nav-tabs-link-bg: $white;
+$nav-tabs-link-color: $gray-500;
+$nav-tabs-link-hover-border-color: $nav-tabs-border-color $nav-tabs-border-color $nav-tabs-border-color;
+$nav-tabs-link-active-color: $emerald-700;
+$nav-tabs-link-active-bg: $white;
+$nav-tabs-link-active-border-color: $nav-tabs-border-color $nav-tabs-border-color $nav-tabs-link-active-bg;
+$nav-pills-custom-bg: $gray-200;
+$text-gray: $gray-500;
+$circle-img-border: $white;
+
+////////   CALENDAR  //////////////
+$fullcalendar-color: $gray-600;
+
+///////// SETTINGS PANEL ////////
+$settings-panel-width: 300px;
+
+////////// Vendor file asset path //////////
+$mdi-font-path: "~@mdi/font/fonts";
+$fa-font-path : '~font-awesome/fonts/';
+$flag-icon-css-path : '~flag-icon-css/flags/';
+$simple-line-font-path : '~simple-line-icons/fonts/';
+
+///////// BOXED LAYOUT ///////
+$boxed-container-width: 1200px;
+$boxed-layout-bg: $gray-200;
+
+///////// TICKETS-TAB ///////
+$tab-head-bg: $gray-100;
+$accent-color: $emerald-700;
+
+///////// LANDING PAGE ///////
+$landing-bg: $white;
+$landing-bg-color: $content-bg;
+
+///////// CHATS ///////
+$chat-container-height: 100%;
+$chat-bottom-btn: $gray-100;
+$form-focus-bg: $white;
+
+$bullet-line-list-shape-bg: $gray-300;

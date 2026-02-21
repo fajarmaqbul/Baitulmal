@@ -14,7 +14,7 @@ const api = axios.create({
  */
 export const fetchActiveSigner = async (structureCode, role, isZakat = false) => {
     try {
-        const response = await api.get('/signers/active', {
+        const response = await api.get('/active-signer', {
             params: {
                 kode_struktur: structureCode,
                 jabatan: role,

@@ -109,7 +109,7 @@ class AsnafStatisticsService
         $stats = Asnaf::join('rts', 'asnaf.rt_id', '=', 'rts.id')
             ->where('asnaf.tahun', $tahun)
             ->where('asnaf.status', 'active')
-            ->selectRaw('rts.kode as rt, asnaf.kategori, COUNT(*) as jumlah')
+            ->selectRaw('rts.kode as rt, asnaf.kategori, COUNT(*) as jumlah_kk, SUM(asnaf.jumlah_jiwa) as jumlah_jiwa')
             ->groupBy('rts.kode', 'asnaf.kategori')
             ->get();
 
@@ -118,7 +118,10 @@ class AsnafStatisticsService
             if (!isset($result[$stat->rt])) {
                 $result[$stat->rt] = [];
             }
-            $result[$stat->rt][$stat->kategori] = $stat->jumlah;
+            $result[$stat->rt][$stat->kategori] = [
+                'jumlah_kk' => $stat->jumlah_kk,
+                'jumlah_jiwa' => $stat->jumlah_jiwa,
+            ];
         }
 
         // Ensure RTs are sorted

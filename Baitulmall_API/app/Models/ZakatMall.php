@@ -11,8 +11,11 @@ class ZakatMall extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'zakat_malls';
+
     protected $fillable = [
         'rt_id',
+        'nama_muzaki',
         'kategori',
         'jumlah',
         'keterangan',

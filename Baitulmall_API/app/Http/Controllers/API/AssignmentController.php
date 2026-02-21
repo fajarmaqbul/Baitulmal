@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
@@ -16,9 +16,18 @@ class AssignmentController extends Controller
             $query->where('structure_id', $request->structure_id);
         }
 
+        $assignments = $query->get()->map(function($a) {
+            if ($a->person) {
+                $a->person->loadCount(['assignments' => function($q) {
+                    $q->where('status', 'Aktif');
+                }]);
+            }
+            return $a;
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $query->get()
+            'data' => $assignments
         ]);
     }
 
@@ -72,18 +81,25 @@ class AssignmentController extends Controller
         $assignments = Assignment::with(['person', 'structure'])->get();
 
         $flattened = $assignments->map(function($a) {
+            // Check for double roles across all active assignments
+            $activeCount = \App\Models\Assignment::where('person_id', $a->person_id)
+                ->where('status', 'Aktif')
+                ->count();
+
             return [
-                'id' => $a->id, // Use assignment ID, not person ID, for editing context
+                'id' => $a->id,
                 'person_id' => $a->person_id,
                 'nama' => $a->person->nama_lengkap,
                 'jabatan' => $a->jabatan,
-                'divisi' => $a->structure->nama_struktur, // Rough mapping
+                'divisi' => $a->structure->nama_struktur,
                 'alamat' => $a->person->alamat_domisili,
                 'no_wa' => $a->person->no_wa,
                 'status' => $a->status,
                 'periode_mulai' => substr($a->tanggal_mulai, 0, 4),
                 'periode_selesai' => $a->tanggal_selesai ? substr($a->tanggal_selesai, 0, 4) : 'Sekarang',
-                'job_desk' => $a->keterangan
+                'job_desk' => $a->keterangan,
+                'is_double_role' => $activeCount > 1,
+                'active_roles_count' => $activeCount
             ];
         });
 
@@ -118,10 +134,12 @@ class AssignmentController extends Controller
         $signer = $query->first();
 
         if (!$signer) {
+            // Return 200 with null data (Safe Fail)
             return response()->json([
                 'success' => false,
-                'message' => 'Signer not found or inactive'
-            ], 404);
+                'message' => 'Signer not found',
+                'data' => null
+            ], 200);
         }
 
         return response()->json([

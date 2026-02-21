@@ -31,23 +31,24 @@ const PrintLayout = React.forwardRef(({ title, subtitle, children, orientation =
                     th, td { border: 1px solid #000; padding: 4px 8px; }
                     th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     
-                    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem; page-break-inside: avoid; }
+                    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem; page-break-inside: avoid; font-size: 10pt; }
                     .signature-item { text-align: center; }
                     .signature-title { font-weight: bold; margin-bottom: 4rem; }
                     .signature-name { font-weight: bold; text-decoration: underline; }
+                    .signature-sk { font-size: 9pt; }
                 `}
             </style>
 
-            <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid #000', paddingBottom: '1rem' }}>
-                <h1 style={{ fontSize: '18pt', fontWeight: 800, margin: 0, textTransform: 'uppercase' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '0.5rem' }}>
+                <h1 style={{ fontSize: '14pt', fontWeight: 800, margin: 0, textTransform: 'uppercase' }}>
                     {title}
                 </h1>
                 {subtitle && (
-                    <h3 style={{ fontSize: '14pt', fontWeight: 600, margin: '0.5rem 0 0' }}>
+                    <h3 style={{ fontSize: '10pt', fontWeight: 600, margin: '0.25rem 0 0' }}>
                         {subtitle}
                     </h3>
                 )}
-                <p style={{ margin: '0.5rem 0 0', fontSize: '10pt', fontStyle: 'italic' }}>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '8pt', fontStyle: 'italic' }}>
                     Dicetak pada: {new Date().toLocaleString('id-ID')}
                 </p>
             </div>
@@ -57,7 +58,7 @@ const PrintLayout = React.forwardRef(({ title, subtitle, children, orientation =
             </div>
 
             <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, fontSize: '9pt', borderTop: '1px solid #ccc', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Baitulmall System v2.0</span>
+                <span>Baitulmal System v1.1.7</span>
                 <span>Halaman 1</span>
             </div>
         </div>

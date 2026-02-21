@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X as XIcon, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
-import { fetchPeopleList, assignPersonToEvent, removeAssignment, fetchEventAssignments } from '../../services/eventApi';
+import { fetchPeopleList, assignPersonToEvent, deleteEventAssignment, fetchEventAssignments } from '../../services/eventApi';
 
 /**
  * AssignPeopleModal - Assign People to Event
@@ -19,7 +19,13 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPerson, setSelectedPerson] = useState(null);
     const [jabatan, setJabatan] = useState('Anggota');
+    const [kewenangan, setKewenangan] = useState({
+        can_sign_report: false,
+        can_manage_budget: false,
+        can_approve_activity: false
+    });
     const [submitting, setSubmitting] = useState(false);
+    const [message, setMessage] = useState({ type: '', text: '' }); // success | error
 
     // Load data when modal opens
     useEffect(() => {
@@ -35,7 +41,7 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                 fetchPeopleList(searchTerm),
                 fetchEventAssignments(event.id)
             ]);
-            setPeople(peopleRes.data || []);
+            setPeople(peopleRes.data?.data || []);
             setAssignments(assignmentsRes.data || []);
         } catch (err) {
             console.error('Failed to load data:', err);
@@ -47,19 +53,20 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
     // Handle search
     const handleSearch = async () => {
         const res = await fetchPeopleList(searchTerm);
-        setPeople(res.data || []);
+        setPeople(res.data?.data || []);
     };
 
     // Handle assign person
     const handleAssign = async () => {
+        setMessage({ type: '', text: '' });
         if (!selectedPerson) {
-            alert('Pilih orang terlebih dahulu');
+            setMessage({ type: 'error', text: 'Pilih orang terlebih dahulu' });
             return;
         }
 
         // Check if already assigned
         if (assignments.some(a => a.person_id === selectedPerson.id)) {
-            alert('Orang ini sudah ditugaskan ke event ini');
+            setMessage({ type: 'error', text: 'Orang ini sudah ditugaskan ke event ini' });
             return;
         }
 
@@ -69,7 +76,8 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                 person_id: selectedPerson.id,
                 structure_id: event.id,
                 jabatan: jabatan,
-                tanggal_mulai: event.tanggal_mulai
+                tanggal_mulai: event.tanggal_mulai,
+                kewenangan: kewenangan
             });
 
             if (res.success) {
@@ -78,13 +86,17 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                 setAssignments(updatedAssignments.data || []);
                 setSelectedPerson(null);
                 setJabatan('Anggota');
+                setKewenangan({
+                    can_approve_activity: false
+                });
+                setMessage({ type: 'success', text: 'Berhasil menugaskan anggota' });
                 onUpdate?.();
             } else {
-                alert('Gagal menugaskan: ' + res.message);
+                setMessage({ type: 'error', text: res.message || 'Gagal menugaskan' });
             }
         } catch (err) {
             console.error('Failed to assign:', err);
-            alert('Terjadi kesalahan');
+            setMessage({ type: 'error', text: 'Terjadi kesalahan sistem' });
         } finally {
             setSubmitting(false);
         }
@@ -95,7 +107,7 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
         if (!confirm('Hapus penugasan ini?')) return;
 
         try {
-            const res = await removeAssignment(assignmentId);
+            const res = await deleteEventAssignment(assignmentId);
             if (res.success) {
                 setAssignments(prev => prev.filter(a => a.id !== assignmentId));
                 onUpdate?.();
@@ -123,9 +135,9 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                 maxWidth: '750px',
                 maxHeight: '90vh',
                 overflowY: 'auto',
-                background: '#fff',
-                borderRadius: '8px',
-                border: '1px solid #dee2e6',
+                background: 'var(--card-bg)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-color)',
                 padding: '2rem'
             }}>
                 {/* Header */}
@@ -175,6 +187,28 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                     </button>
                 </div>
 
+                {/* Message Alert */}
+                {message.text && (
+                    <div style={{
+                        padding: '0.75rem 1rem',
+                        marginBottom: '1.5rem',
+                        borderRadius: '8px',
+                        background: message.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        border: `1px solid ${message.type === 'success' ? 'var(--success)' : 'var(--danger)'}`,
+                        color: message.type === 'success' ? 'var(--success)' : 'var(--danger)',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <span>{message.text}</span>
+                        <button onClick={() => setMessage({ type: '', text: '' })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
+                            <XIcon size={16} />
+                        </button>
+                    </div>
+                )}
+
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '4rem' }}>
                         <Loader2 size={40} className="spin" style={{ color: 'var(--primary)' }} />
@@ -184,11 +218,11 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                     <>
                         {/* Add Person Section */}
                         <div style={{
-                            background: '#f8f9fa',
+                            background: 'var(--background)',
                             padding: '1.5rem',
-                            borderRadius: '8px',
+                            borderRadius: '12px',
                             marginBottom: '2rem',
-                            border: '1px solid #e9ecef'
+                            border: '1px solid var(--border-color)'
                         }}>
                             <h4 style={{ margin: '0 0 1.25rem 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)' }}></div>
@@ -235,7 +269,7 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                                         }}
                                     >
                                         <option value="">-- Pilih Anggota --</option>
-                                        {people.map(p => (
+                                        {people && people.map && people.map(p => (
                                             <option key={p.id} value={p.id}>{p.nama_lengkap}</option>
                                         ))}
                                     </select>
@@ -254,6 +288,34 @@ const AssignPeopleModal = ({ open, onClose, event, onUpdate }) => {
                                         <option value="Koordinator">Koordinator</option>
                                         <option value="Anggota">Anggota</option>
                                     </select>
+                                </div>
+
+                                {/* Kewenangan Checkboxes */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '0.5rem', background: 'rgba(255,255,255,0.5)', borderRadius: '4px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={kewenangan.can_sign_report}
+                                            onChange={(e) => setKewenangan({ ...kewenangan, can_sign_report: e.target.checked })}
+                                        />
+                                        Tanda Tangan Laporan
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={kewenangan.can_manage_budget}
+                                            onChange={(e) => setKewenangan({ ...kewenangan, can_manage_budget: e.target.checked })}
+                                        />
+                                        Kelola Anggaran
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={kewenangan.can_approve_activity}
+                                            onChange={(e) => setKewenangan({ ...kewenangan, can_approve_activity: e.target.checked })}
+                                        />
+                                        Persetujuan Kegiatan
+                                    </label>
                                 </div>
 
                                 <button

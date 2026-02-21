@@ -2,480 +2,746 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     ShieldCheck,
     Plus,
-    Heart,
-    UserPlus,
-    ArrowRightCircle,
     TrendingUp,
     Edit2,
     Trash2,
-    Search,
+    Loader2,
+    Wallet,
+    ArrowUpRight,
+    ArrowDownRight,
+    Banknote,
+    Calendar,
+    Filter,
+    Layers,
+    RefreshCw,
     Printer,
-    Loader2
+    Download,
+    Database
 } from 'lucide-react';
-import { formatDate } from '../utils/dataUtils';
-import { fetchRTs } from '../services/asnafApi';
+import * as XLSX from 'xlsx';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import BeneficiaryList from '../components/BeneficiaryList';
+import PrintLayout from '../components/PrintLayout';
+import { usePagePrint } from '../hooks/usePagePrint';
+import { useSignatureRule } from '../hooks/useSignatureRule';
 import {
-    fetchSedekahList,
-    createSedekah,
     fetchSantunanList,
     createSantunan,
     updateSantunanApi,
-    deleteSantunanApi
+    deleteSantunanApi,
+    fetchSantunanDonations,
+    createSantunanDonation,
+    deleteSantunanDonation,
+    fetchSantunanSummary,
+    fetchSantunanActivities,
+    fetchBeneficiaries
 } from '../services/santunanApi';
-import PrintLayout from '../components/PrintLayout';
-import { usePagePrint } from '../hooks/usePagePrint';
-import { fetchSettings } from '../services/settingApi';
+import { fetchRTs } from '../services/asnafApi';
+import { formatDate } from '../utils/dataUtils';
 
-const SantunanPrint = ({ data, defaultKetua, defaultKoordinator }) => (
-    <PrintLayout title="Daftar Penerima Santunan Anak Yatim">
-        <table className="table-print-boxed">
-            <thead>
-                <tr>
-                    <th style={{ width: '50px', textAlign: 'center' }}>No</th>
-                    <th>Nama Anak</th>
-                    <th style={{ width: '80px', textAlign: 'center' }}>RT</th>
-                    <th style={{ width: '150px' }}>Besaran (Rp)</th>
-                    <th style={{ width: '120px' }}>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {data.map((item, index) => (
-                    <tr key={item.id}>
-                        <td style={{ textAlign: 'center' }}>{index + 1}</td>
-                        <td>{item.nama}</td>
-                        <td style={{ textAlign: 'center' }}>{item.rt}</td>
-                        <td style={{ fontWeight: 600 }}>Rp {item.besaran.toLocaleString()}</td>
-                        <td>{item.statusPenerimaan}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-        <div className="signature-grid">
-            <div className="signature-item">
-                <div className="signature-title">Ketua Baitulmall</div>
-                <div className="signature-name">{defaultKetua}</div>
+// Reusable Stat Card
+const StatCard = ({ title, value, icon: Icon, colorClass, subtitle }) => (
+    <div className={`card stat-hover`} style={{ borderLeft: `4px solid var(--${colorClass})`, padding: '1.25rem' }}>
+        <div className="d-flex align-items-center gap-3 mb-2">
+            <div style={{ padding: '0.6rem', borderRadius: '10px', background: `rgba(var(--${colorClass}-rgb), 0.1)`, color: `var(--${colorClass})` }}>
+                <Icon size={20} strokeWidth={2.5} />
             </div>
-            <div className="signature-item">
-                <div className="signature-title">Koordinator Santunan</div>
-                <div className="signature-name">{defaultKoordinator}</div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</span>
+        </div>
+        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{value}</div>
+        {subtitle && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{subtitle}</div>}
+    </div>
+);
+
+// Module Stat Card (Dynamic Breakdown)
+const ModuleCard = ({ title, penerimaan, penyaluran, saldo, detailPenyaluran }) => (
+    <div className="card" style={{ padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1rem', textTransform: 'uppercase' }}>{title}</h4>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+            {/* IN */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}><ArrowUpRight size={14} style={{ display: 'inline', marginRight: '4px' }} /> Masuk</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Rp {penerimaan.toLocaleString()}</span>
+            </div>
+
+            {/* OUT */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}><ArrowDownRight size={14} style={{ display: 'inline', marginRight: '4px' }} /> Keluar</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Rp {penyaluran.toLocaleString()}</span>
+            </div>
+
+            {/* DETAIL BREAKDOWN (For Santunan) */}
+            {detailPenyaluran && (
+                <div style={{ background: 'var(--background)', padding: '0.5rem', borderRadius: '6px', fontSize: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', color: 'var(--text-muted)' }}>
+                        <span>• Yatim/Piatu</span>
+                        <span style={{ fontWeight: 600 }}>{detailPenyaluran.yatim ? Number(detailPenyaluran.yatim).toLocaleString() : 0}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                        <span>• Dhuafa</span>
+                        <span style={{ fontWeight: 600 }}>{detailPenyaluran.dhuafa ? Number(detailPenyaluran.dhuafa).toLocaleString() : 0}</span>
+                    </div>
+                </div>
+            )}
+
+            {/* SALDO */}
+            <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Saldo</span>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: saldo >= 0 ? 'var(--primary)' : 'var(--danger)' }}>Rp {saldo.toLocaleString()}</span>
             </div>
         </div>
-    </PrintLayout>
+    </div>
 );
 
 const Santunan = () => {
-    // Print State
-    const printRef = useRef(null);
-    const handlePrint = usePagePrint(printRef, 'Laporan Santunan Yatim');
-    // API State
-    const [donasiSantunan, setDonasiSantunan] = useState([]);
-    const [anakYatim, setAnakYatim] = useState([]);
-    const [rtRw, setRtRw] = useState([]);
+    // State
     const [loading, setLoading] = useState(true);
-    const [deleteModal, setDeleteModal] = useState({ open: false, id: null, type: null, loading: false });
-    const [error, setError] = useState(null);
-    const [settingsList, setSettingsList] = useState([]);
+    const [summaryLoading, setSummaryLoading] = useState(true);
 
-    const getSetting = (key, fallback) => {
-        const s = settingsList.find(item => item.key_name === key);
-        return s ? s.value : fallback;
-    };
+    // Financial Data (Strict Scope: Santunan Only)
+    const [santunanStats, setSantunanStats] = useState({ penerimaan: 0, penyaluran: 0, saldo: 0, detail: {} });
 
-    const defaultKetua = getSetting('default_signer_ketua', '................');
-    const defaultKoordinator = getSetting('default_signer_koordinator', '................');
+    // Table Data
+    const [donations, setDonations] = useState([]);
+    const [distributions, setDistributions] = useState([]);
+    const [activities, setActivities] = useState([]);
+    const [beneficiaries, setBeneficiaries] = useState([]); // Master Data for Dropdown
+    const [rtList, setRtList] = useState([]);
 
-    // Form & UI State
-    const [activeTab, setActiveTab] = useState('yatim');
+    // Filters
+    const [mainTab, setMainTab] = useState('penerimaan');
+    const [viewMode, setViewMode] = useState('keuangan'); // 'keuangan' | 'database'
+    const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
+    const [activityFilter, setActivityFilter] = useState(''); // Empty string = all
+    const [rtFilter, setRtFilter] = useState('all');
+
+    // Modal
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState('donasi');
     const [editId, setEditId] = useState(null);
-    const [formData, setFormData] = useState({ sumber: '', jumlah: '', nama: '', rt: '01', besaran: '', nama_orang_tua: '', umur: '', rekening: '' });
-    const [searchTerm, setSearchTerm] = useState('');
+    const [formData, setFormData] = useState({
+        nama_donatur: '', jumlah: '', tanggal: new Date().toISOString().split('T')[0], keterangan: '', activity_id: '', // Donation
+        nama_anak: '', rt_id: '', besaran: '', status_penerimaan: 'belum', nama_orang_tua: '', kategori: 'yatim' // Distribution
+    });
+    const [deleteModal, setDeleteModal] = useState({ open: false, id: null, type: null, loading: false });
 
-    // Fetch Initial Data
-    useEffect(() => {
-        const loadInitialData = async () => {
-            try {
-                setLoading(true);
-                const [sedekahRes, santunanRes, rtRes, settingsRes] = await Promise.all([
-                    fetchSedekahList({ jenis: 'penerimaan', per_page: 100 }),
-                    fetchSantunanList({ per_page: 500 }),
-                    fetchRTs(),
-                    fetchSettings()
-                ]);
+    // Signature Hook
+    const { leftSigner, rightSigner } = useSignatureRule('santunan', 'ALL', rtFilter === 'all' ? 'ALL' : rtFilter);
 
-                if (settingsRes.success) {
-                    setSettingsList(settingsRes.data);
-                }
+    // Print Hook
+    const printRef = useRef(null);
+    const handlePrint = usePagePrint(printRef, `Laporan Santunan ${yearFilter}`);
 
-                setDonasiSantunan(sedekahRes.data.map(d => ({
-                    id: d.id,
-                    sumber: d.tujuan, // Using 'tujuan' field for source
-                    jumlah: Number(d.jumlah),
-                    tanggal: d.tanggal
-                })));
+    // Load Summaries (Santunan ONLY)
+    const loadSummaries = async () => {
+        try {
+            setSummaryLoading(true);
+            const santunanSum = await fetchSantunanSummary({ tahun: yearFilter, activity_id: activityFilter || undefined });
 
-                setAnakYatim(santunanRes.data.map(a => ({
-                    id: a.id,
-                    nama: a.nama_anak,
-                    rt: a.rt?.kode || '??',
-                    besaran: Number(a.besaran),
-                    nama_orang_tua: a.nama_orang_tua || '-',
-                    umur: a.umur || '-',
-                    rekening: a.rekening || '-',
-                    statusPenerimaan: a.status_penerimaan.charAt(0).toUpperCase() + a.status_penerimaan.slice(1)
-                })));
+            // Process Santunan
+            const sData = santunanSum.data || {};
+            setSantunanStats({
+                penerimaan: Number(sData.penerimaan || 0),
+                penyaluran: Number(sData.penyaluran?.total || 0),
+                saldo: Number(sData.saldo || 0),
+                detail: sData.penyaluran || {} // breakdown yatim/dhuafa
+            });
 
-                setRtRw(Array.isArray(rtRes) ? rtRes : (rtRes?.data || []));
-            } catch (err) {
-                console.error('Failed to load Santunan data:', err);
-                setError('Gagal memuat data dari server.');
-            } finally {
-                setLoading(false);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setSummaryLoading(false);
+        }
+    };
+
+    const loadTableData = async () => {
+        try {
+            setLoading(true);
+            const params = { tahun: yearFilter, per_page: 100 };
+            if (rtFilter !== 'all') params.rt_id = rtFilter;
+            if (activityFilter) params.activity_id = activityFilter;
+
+            if (mainTab === 'penerimaan') {
+                const res = await fetchSantunanDonations(params);
+                setDonations(res.data || []);
+            } else {
+                const res = await fetchSantunanList(params);
+                setDistributions(res.data || []);
             }
-        };
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        loadInitialData();
+    useEffect(() => {
+        fetchRTs().then(res => setRtList(Array.isArray(res) ? res : res.data));
+        fetchSantunanActivities().then(res => setActivities(res));
+        fetchBeneficiaries({ per_page: 500 }).then(res => setBeneficiaries(res.data)); // Load all for dropdown
     }, []);
 
-    const totalDonasi = donasiSantunan.reduce((acc, curr) => acc + curr.jumlah, 0);
-    const totalAnak = anakYatim.length;
-    const totalSantunanKeluar = anakYatim.reduce((acc, curr) => acc + curr.besaran, 0);
+    useEffect(() => {
+        loadSummaries();
+    }, [yearFilter, activityFilter]);
 
+    useEffect(() => {
+        loadTableData();
+    }, [yearFilter, rtFilter, activityFilter, mainTab]);
+
+    // Handlers
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             if (modalType === 'donasi') {
+                await createSantunanDonation({
+                    nama_donatur: formData.nama_donatur,
+                    jumlah: formData.jumlah,
+                    tanggal: formData.tanggal,
+                    tahun: yearFilter,
+                    keterangan: formData.keterangan,
+                    activity_id: formData.activity_id || null
+                });
+            } else {
                 const payload = {
-                    jumlah: Number(formData.jumlah),
-                    jenis: 'penerimaan',
-                    tujuan: formData.sumber, // Using 'tujuan' for source
-                    tanggal: new Date().toISOString().split('T')[0],
-                    tahun: new Date().getFullYear(),
-                    rt_id: rtRw.find(r => r.kode === '01')?.id || 1 // Default to RT 01
+                    nama_anak: formData.nama_anak, // Reuse this field for Penerima Name
+                    rt_id: formData.rt_id,
+                    beneficiary_id: formData.beneficiary_id, // Linked ID
+                    besaran: formData.besaran,
+                    status_penerimaan: formData.status_penerimaan,
+                    tahun: yearFilter,
+                    activity_id: formData.activity_id || null,
+                    kategori: formData.kategori,
+                    nama_orang_tua: formData.nama_orang_tua
                 };
-                const res = await createSedekah(payload);
-                const newData = {
-                    id: res.data.id,
-                    sumber: res.data.tujuan,
-                    jumlah: Number(res.data.jumlah),
-                    tanggal: res.data.tanggal
-                };
-                setDonasiSantunan(prev => [newData, ...prev]);
-                alert('Donasi berhasil disimpan!');
-            } else if (modalType === 'yatim') {
-                const rtObj = rtRw.find(r => r.kode === formData.rt);
-                const payload = {
-                    nama_anak: formData.nama,
-                    rt_id: rtObj?.id || 1,
-                    besaran: Number(formData.besaran),
-                    nama_orang_tua: formData.nama_orang_tua,
-                    umur: formData.umur,
-                    rekening: formData.rekening,
-                    status_penerimaan: 'belum',
-                    tahun: new Date().getFullYear()
-                };
-
-                if (editId) {
-                    const res = await updateSantunanApi(editId, payload);
-                    setAnakYatim(prev => prev.map(a => a.id === editId ? {
-                        id: res.data.id,
-                        nama: res.data.nama_anak,
-                        rt: res.data.rt?.kode || '??',
-                        besaran: Number(res.data.besaran),
-                        nama_orang_tua: res.data.nama_orang_tua || formData.nama_orang_tua,
-                        umur: res.data.umur || formData.umur,
-                        rekening: res.data.rekening || formData.rekening,
-                        statusPenerimaan: res.data.status_penerimaan.charAt(0).toUpperCase() + res.data.status_penerimaan.slice(1)
-                    } : a));
-                    alert('Data anak berhasil diperbarui!');
-                } else {
-                    const res = await createSantunan(payload);
-                    const newData = {
-                        id: res.data.id,
-                        nama: res.data.nama_anak,
-                        rt: res.data.rt?.kode || '??',
-                        besaran: Number(res.data.besaran),
-                        nama_orang_tua: res.data.nama_orang_tua || formData.nama_orang_tua,
-                        umur: res.data.umur || formData.umur,
-                        rekening: res.data.rekening || formData.rekening,
-                        statusPenerimaan: res.data.status_penerimaan.charAt(0).toUpperCase() + res.data.status_penerimaan.slice(1)
-                    };
-                    setAnakYatim(prev => [...prev, newData]);
-                    alert('Data anak berhasil ditambahkan!');
-                }
+                if (editId) await updateSantunanApi(editId, payload);
+                else await createSantunan(payload);
             }
-            closeModal();
+            setShowModal(false);
+            loadSummaries();
+            loadTableData();
         } catch (err) {
-            console.error(err);
-            alert('Gagal menyimpan data.');
+            alert('Gagal menyimpan data');
         }
     };
 
-    const handleDeleteClick = (id, type) => {
-        setDeleteModal({ open: true, id, type, loading: false });
-    };
-
-    const confirmDelete = async () => {
-        const { id, type } = deleteModal;
-        if (!id) return;
-
-        setDeleteModal(prev => ({ ...prev, loading: true }));
-        try {
-            if (type === 'donasi') {
-                await deleteSedekahApi(id);
-                setDonasiSantunan(prev => prev.filter(d => d.id !== id));
-            } else { // type === 'yatim'
-                await deleteSantunanApi(id);
-                setAnakYatim(prev => prev.filter(a => a.id !== id));
-            }
-            setDeleteModal({ open: false, id: null, type: null, loading: false });
-        } catch (err) {
-            alert('Gagal menghapus data');
-            setDeleteModal(prev => ({ ...prev, loading: false }));
+    const openModal = (type, data = null) => {
+        setModalType(type);
+        setEditId(data?.id || null);
+        if (type === 'donasi') {
+            setFormData({
+                nama_donatur: data?.nama_donatur || '',
+                jumlah: data?.jumlah || '',
+                tanggal: data?.tanggal || new Date().toISOString().split('T')[0],
+                keterangan: data?.keterangan || '',
+                activity_id: data?.activity_id || activityFilter || ''
+            });
+        } else {
+            console.log(data);
+            setFormData({
+                nama_anak: data?.nama_anak || '',
+                rt_id: data?.rt_id || rtList[0]?.id,
+                besaran: data?.besaran || '',
+                status_penerimaan: data?.status_penerimaan || 'belum',
+                activity_id: data?.activity_id || activityFilter || '',
+                kategori: data?.kategori || 'yatim',
+                nama_orang_tua: data?.nama_orang_tua || ''
+            });
         }
-    };
-
-
-    const handleEditYatim = (item) => {
-        setModalType('yatim');
-        setEditId(item.id);
-        setFormData({
-            ...formData,
-            nama: item.nama,
-            rt: item.rt === '??' ? '01' : item.rt,
-            besaran: item.besaran,
-            nama_orang_tua: item.nama_orang_tua || '',
-            umur: item.umur || '',
-            rekening: item.rekening || ''
-        });
         setShowModal(true);
+    }
+
+    // Toolbar Handlers
+    const handleRefresh = () => {
+        loadSummaries();
+        loadTableData();
     };
 
-    const closeModal = () => {
-        setShowModal(false);
-        setEditId(null);
-        setModalType('donasi');
-        setFormData({ sumber: '', jumlah: '', nama: '', rt: '01', besaran: '', nama_orang_tua: '', umur: '', rekening: '' });
-    };
+    const handleExport = () => {
+        // Prepare data based on active tab
+        const dataToExport = mainTab === 'penerimaan' ? donations : distributions;
+        const fileName = mainTab === 'penerimaan' ? `Penerimaan_Santunan_${yearFilter}` : `Penyaluran_Santunan_${yearFilter}`;
 
-    const filteredAnakYatim = anakYatim.filter(a =>
-        a.nama.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+        XLSX.writeFile(workbook, `${fileName}.xlsx`);
+    };
 
     return (
-        <div className="santunan-container">
-            {/* Hidden Print Layout Removed */}
-
-            {/* Global Stats & Layout Reorganization */}
-            <div style={{ marginBottom: '2rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
-                    {/* Stats Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--success)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Saldo Donasi</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)' }}>Rp {totalDonasi.toLocaleString()}</div>
-                        </div>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--primary)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Jumlah Anak</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>{totalAnak} Jiwa</div>
-                        </div>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--warning)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Rencana Salur</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--warning)' }}>Rp {totalSantunanKeluar.toLocaleString()}</div>
-                        </div>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--info)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Donasi Masuk</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--info)' }}>{donasiSantunan.length} Tx</div>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', alignContent: 'start' }}>
-                        <button className="btn" style={{ border: '1px solid var(--card-border)', background: '#fff' }}>2026</button>
-                        <button className="btn" onClick={handlePrint} disabled={loading} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff', border: '1px solid var(--card-border)' }}>
-                            <Printer size={16} /> Print
-                        </button>
-                        <button className="btn" style={{ border: '1px solid var(--card-border)', background: '#fff' }}>Info</button>
-                    </div>
+        <div className="santunan-dashboard animate-fade-in no-print">
+            {/* 1. Global Summary & Toolbar */}
+            <div className="d-flex align-items-center justify-content-between mb-4 no-print">
+                <div>
+                    <h2 style={{ fontWeight: 800, margin: 0 }}>Manajemen Santunan</h2>
+                    <p className="text-muted">Aktivitas Santunan, Donasi, dan Database Penerima</p>
                 </div>
 
-                {/* Inline Forms */}
-                {activeTab === 'yatim' && (
-                    <div className="card" style={{ padding: '1.5rem', background: '#e9ecef', marginBottom: '1.5rem', border: 'none' }}>
-                        <form onSubmit={(e) => { e.preventDefault(); setModalType('yatim'); handleSubmit(e); }} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', alignItems: 'end' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Nama Anak</label>
-                                <input className="form-control" value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} placeholder="Nama Lengkap" required style={{ background: '#fff' }} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Nama Orang Tua/Wali</label>
-                                <input className="form-control" value={formData.nama_orang_tua} onChange={e => setFormData({ ...formData, nama_orang_tua: e.target.value })} placeholder="Nama Wali" style={{ background: '#fff' }} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Umur (Thn)</label>
-                                <input type="number" className="form-control" value={formData.umur} onChange={e => setFormData({ ...formData, umur: e.target.value })} placeholder="Contoh: 10" style={{ background: '#fff' }} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>No. Rekening</label>
-                                <input className="form-control" value={formData.rekening} onChange={e => setFormData({ ...formData, rekening: e.target.value })} placeholder="Bank - No Rek" style={{ background: '#fff' }} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>RT</label>
-                                <select className="form-control" value={formData.rt} onChange={e => setFormData({ ...formData, rt: e.target.value })} style={{ background: '#fff' }}>
-                                    {rtRw.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
-                                </select>
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Besaran (Rp)</label>
-                                <input type="number" className="form-control" value={formData.besaran} onChange={e => setFormData({ ...formData, besaran: e.target.value })} placeholder="0" required style={{ background: '#fff' }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', gridColumn: 'span 2' }}>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan</button>
-                                <button type="button" className="btn btn-ghost" style={{ flex: 1, background: '#fff', border: '1px solid var(--danger)', color: 'var(--danger)' }} onClick={() => setFormData({ sumber: '', jumlah: '', nama: '', rt: '01', besaran: '', nama_orang_tua: '', umur: '', rekening: '' })}>Batal</button>
-                            </div>
-                        </form>
+                {/* Modern Toolbar */}
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    {/* Signature Status Preview */}
+                    <div className="d-none d-md-flex align-items-center gap-2 small px-3 py-2 rounded-pill border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border-color)', height: '42px' }}>
+                        <ShieldCheck size={14} className={leftSigner ? "text-success" : "text-muted"} />
+                        <span style={{ color: 'var(--text-muted)' }}>TTD:</span>
+                        {leftSigner || rightSigner ? (
+                            <strong style={{ color: 'var(--text-main)' }}>
+                                {leftSigner?.nama_pejabat?.split(' ')[0] || '?'} & {rightSigner?.nama_pejabat?.split(' ')[0] || '?'}
+                            </strong>
+                        ) : (
+                            <span className="text-danger fst-italic">Belum diset</span>
+                        )}
                     </div>
-                )}
-
-                {activeTab === 'donasi' && (
-                    <div className="card" style={{ padding: '1.5rem', background: '#e9ecef', marginBottom: '1.5rem', border: 'none' }}>
-                        <form onSubmit={(e) => { e.preventDefault(); setModalType('donasi'); handleSubmit(e); }} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', alignItems: 'end' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Sumber Donasi</label>
-                                <input className="form-control" value={formData.sumber} onChange={e => setFormData({ ...formData, sumber: e.target.value })} placeholder="Contoh: Hamba Allah" required style={{ background: '#fff' }} />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Jumlah Donasi (Rp)</label>
-                                <input type="number" className="form-control" value={formData.jumlah} onChange={e => setFormData({ ...formData, jumlah: e.target.value })} placeholder="0" required style={{ background: '#fff' }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan</button>
-                                <button type="button" className="btn btn-ghost" style={{ flex: 1, background: '#fff', border: '1px solid var(--danger)', color: 'var(--danger)' }} onClick={() => setFormData({ sumber: '', jumlah: '', nama: '', rt: '01', besaran: '', nama_orang_tua: '', umur: '', rekening: '' })}>Batal</button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-            </div>
-
-            <div className="glass-card">
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--card-border)', marginBottom: '1.5rem', alignItems: 'center' }}>
-                    {['yatim', 'donasi'].map(tab => (
+                    {/* View Mode Toggle */}
+                    <div style={{ display: 'flex', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '1rem', background: 'var(--background)' }}>
                         <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => setViewMode('keuangan')}
                             style={{
-                                padding: '1rem 2rem',
-                                background: 'none',
-                                border: 'none',
-                                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
-                                borderBottom: activeTab === tab ? '2px solid var(--primary)' : 'none',
-                                cursor: 'pointer',
-                                fontWeight: 600,
-                                textTransform: 'capitalize'
+                                padding: '0 1rem', borderRadius: '6px', border: 'none', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px',
+                                background: viewMode === 'keuangan' ? 'var(--card-bg)' : 'transparent',
+                                color: viewMode === 'keuangan' ? 'var(--primary)' : 'var(--text-muted)',
+                                boxShadow: viewMode === 'keuangan' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                             }}
                         >
-                            {tab === 'yatim' ? 'Data Penerima (Anak Yatim)' : 'Log Donasi Masuk'}
+                            <Wallet size={16} /> Keuangan
                         </button>
-                    ))}
-                </div>
+                        <button
+                            onClick={() => setViewMode('database')}
+                            style={{
+                                padding: '0 1rem', borderRadius: '6px', border: 'none', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px',
+                                background: viewMode === 'database' ? 'var(--card-bg)' : 'transparent',
+                                color: viewMode === 'database' ? 'var(--info)' : 'var(--text-muted)',
+                                boxShadow: viewMode === 'database' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                            }}
+                        >
+                            <Database size={16} /> Database Master
+                        </button>
+                    </div>
 
-                <div className="table-container">
-                    {activeTab === 'yatim' && (
-                        <table className="table-compact table-print-boxed">
-                            <thead>
-                                <tr>
-                                    <th className="col-no">NO</th>
-                                    <th>Nama Anak</th>
-                                    <th>Wali / Orang Tua</th>
-                                    <th style={{ textAlign: 'center' }}>Umur</th>
-                                    <th>RT</th>
-                                    <th>No. Rekening</th>
-                                    <th>Besaran</th>
-                                    <th className="no-print">Status</th>
-                                    <th className="no-print">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}><Loader2 className="spin" /></td></tr>
-                                ) : filteredAnakYatim.length === 0 ? (
-                                    <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>Tidak ada data anak yatim.</td></tr>
-                                ) : filteredAnakYatim.map((a, index) => (
-                                    <tr key={a.id}>
-                                        <td className="col-no">{index + 1}</td>
-                                        <td style={{ fontWeight: 600 }}>{a.nama}</td>
-                                        <td>{a.nama_orang_tua}</td>
-                                        <td style={{ textAlign: 'center' }}>{a.umur}</td>
-                                        <td style={{ textAlign: 'center' }}>RT {a.rt}</td>
-                                        <td style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{a.rekening}</td>
-                                        <td style={{ fontWeight: 600 }}>Rp {a.besaran.toLocaleString()}</td>
-                                        <td className="no-print">
-                                            <span style={{
-                                                background: a.statusPenerimaan === 'Sudah' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                                                color: a.statusPenerimaan === 'Sudah' ? 'var(--success)' : 'var(--warning)',
-                                                padding: '4px 12px',
-                                                borderRadius: '20px',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 600
-                                            }}>
-                                                {a.statusPenerimaan}
-                                            </span>
-                                        </td>
-                                        <td className="no-print">
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => handleEditYatim(a)}><Edit2 size={14} /></button>
-                                                <button className="btn btn-ghost" style={{ padding: '4px', color: 'var(--danger)' }} onClick={() => handleDeleteClick(a.id, 'yatim')}><Trash2 size={14} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    {/* Year Selector (Only for Keuangan) */}
+                    {viewMode === 'keuangan' && (
+                        <select
+                            className="input"
+                            style={{ height: '42px', fontWeight: 600, minWidth: '100px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-main)' }}
+                            value={yearFilter}
+                            onChange={e => setYearFilter(e.target.value)}
+                        >
+                            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
                     )}
 
-                    {activeTab === 'donasi' && (
-                        <table className="table-compact">
-                            <thead>
-                                <tr>
-                                    <th className="col-no">NO</th>
-                                    <th>Sumber Donasi</th>
-                                    <th>Tanggal</th>
-                                    <th>Jumlah</th>
-                                    <th className="no-print">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {donasiSantunan.map((d, index) => (
-                                    <tr key={d.id}>
-                                        <td className="col-no">{index + 1}</td>
-                                        <td style={{ fontWeight: 600 }}>{d.sumber}</td>
-                                        <td>{formatDate(d.tanggal)}</td>
-                                        <td style={{ fontWeight: 700, color: 'var(--success)' }}>+ Rp {d.jumlah.toLocaleString()}</td>
-                                        <td className="no-print">
-                                            <button className="btn btn-ghost" style={{ padding: '4px', color: 'var(--danger)' }} onClick={() => handleDeleteClick(d.id, 'donasi')}><Trash2 size={14} /></button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    {/* Refresh Button */}
+                    <button
+                        onClick={handleRefresh}
+                        className="btn btn-ghost"
+                        style={{ height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-muted)', background: 'var(--card-bg)' }}
+                        title="Refresh Data"
+                    >
+                        <RefreshCw size={18} className={loading || summaryLoading ? 'spin' : ''} />
+                    </button>
+
+                    {/* Print Button */}
+                    <button
+                        onClick={handlePrint}
+                        className="btn btn-ghost"
+                        style={{ height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-muted)', background: 'var(--card-bg)' }}
+                        title="Print Dashboard"
+                    >
+                        <Printer size={18} />
+                    </button>
+
+                    {/* Download Button (Only for Keuangan) */}
+                    {viewMode === 'keuangan' && (
+                        <button
+                            onClick={handleExport}
+                            className="btn btn-primary"
+                            style={{ height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Export to Excel"
+                        >
+                            <Download size={18} />
+                        </button>
                     )}
                 </div>
             </div>
+
+            {
+                viewMode === 'keuangan' ? (
+                    <>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }} className="no-print">
+                            <StatCard
+                                title="Santunan Masuk (Dana)"
+                                value={`Rp ${santunanStats.penerimaan.toLocaleString()}`}
+                                icon={Wallet}
+                                colorClass="success"
+                                subtitle="Total Donasi Santunan"
+                            />
+                            <StatCard
+                                title="Santunan Keluar (Penyaluran)"
+                                value={`Rp ${santunanStats.penyaluran.toLocaleString()}`}
+                                icon={TrendingUp}
+                                colorClass="danger"
+                                subtitle="Total Penyaluran Santunan"
+                            />
+                            <StatCard
+                                title="Saldo Santunan"
+                                value={`Rp ${santunanStats.saldo.toLocaleString()}`}
+                                icon={Banknote}
+                                colorClass="primary"
+                                subtitle="Sisa Dana Tersedia"
+                            />
+                        </div>
+
+                        {/* 3. Accountability Table (Santunan Focus) */}
+                        <div className="card print-wrapper" style={{ border: '1px solid var(--border-color)', borderRadius: '16px', overflow: 'hidden', padding: 0 }}>
+                            <div className="no-print" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+                                {/* Activity Filter (Crucial) */}
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--background)' }}>
+                                        <Layers size={16} className="text-muted" />
+                                        <select
+                                            value={activityFilter}
+                                            onChange={(e) => setActivityFilter(e.target.value)}
+                                            style={{ border: 'none', fontWeight: 700, outline: 'none', fontSize: '0.9rem', color: 'var(--text-main)', minWidth: '150px', background: 'transparent' }}
+                                        >
+                                            <option value="">Semua Kegiatan</option>
+                                            {activities.map(act => <option key={act.id} value={act.id}>{act.nama_kegiatan}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Tabs */}
+                                <div style={{ display: 'flex', gap: '0.5rem', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--background)' }}>
+                                    <button
+                                        onClick={() => setMainTab('penerimaan')}
+                                        style={{
+                                            padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '0.85rem',
+                                            background: mainTab === 'penerimaan' ? 'var(--primary-light)' : 'transparent',
+                                            color: mainTab === 'penerimaan' ? 'var(--primary)' : 'var(--text-muted)',
+                                        }}
+                                    >
+                                        Dana Masuk
+                                    </button>
+                                    <button
+                                        onClick={() => setMainTab('penyaluran')}
+                                        style={{
+                                            padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '0.85rem',
+                                            background: mainTab === 'penyaluran' ? 'var(--danger-light)' : 'transparent',
+                                            color: mainTab === 'penyaluran' ? 'var(--danger)' : 'var(--text-muted)',
+                                        }}
+                                    >
+                                        Penyaluran
+                                    </button>
+                                </div>
+
+                                <button className="btn btn-primary" onClick={() => openModal(mainTab === 'penerimaan' ? 'donasi' : 'distribusi')} style={{ fontWeight: 700 }}>
+                                    <Plus size={16} className="me-2" />
+                                    Input {mainTab === 'penerimaan' ? 'Donasi' : 'Penyaluran'}
+                                </button>
+                            </div>
+
+                            {/* Table Content */}
+                            <div style={{ padding: 0 }}>
+                                {mainTab === 'penerimaan' ? (
+                                    <table className="table-compact" style={{ width: '100%' }}>
+                                        <thead style={{ fontSize: '0.75rem', textTransform: 'uppercase', background: 'var(--background)' }}>
+                                            <tr>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Donatur / Sumber</th>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Kegiatan</th>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Tanggal</th>
+                                                <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--text-muted)' }}>Jumlah</th>
+                                                <th style={{ padding: '1rem', width: '50px' }}></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {donations.map(d => (
+                                                <tr key={d.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '1rem', fontWeight: 600 }}>{d.nama_donatur}</td>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
+                                                        {activities.find(a => a.id === d.activity_id)?.nama_kegiatan || '-'}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>{formatDate(d.tanggal)}</td>
+                                                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                        Rp {Number(d.jumlah).toLocaleString()}
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <button className="btn-icon" onClick={() => openModal('donasi', d)}><Edit2 size={16} /></button>
+                                                            <button className="btn-icon danger" onClick={() => { setDeleteModal({ open: true, id: d.id, type: 'donasi' }) }}><Trash2 size={16} /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <table className="table-compact" style={{ width: '100%' }}>
+                                        <thead style={{ background: 'var(--background)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                                            <tr>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Nama Penerima</th>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Kategori</th>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Kegiatan</th>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>RT</th>
+                                                <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--text-muted)' }}>Besaran</th>
+                                                <th style={{ padding: '1rem', color: 'var(--text-muted)' }}>Status</th>
+                                                <th style={{ padding: '1rem', width: '80px' }}></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {distributions.map(d => (
+                                                <tr key={d.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '1rem', fontWeight: 600 }}>{d.nama_anak}</td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <span className={`badge ${d.kategori === 'yatim' ? 'badge-primary' : 'badge-warning'}`}>
+                                                            {d.kategori?.toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
+                                                        {activities.find(a => a.id === d.activity_id)?.nama_kegiatan || '-'}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>RT {d.rt?.kode || '-'}</td>
+                                                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                        Rp {Number(d.besaran).toLocaleString()}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <span style={{
+                                                            fontWeight: 700,
+                                                            color: d.status_penerimaan === 'sudah' ? 'var(--success)' : '#cbd5e1',
+                                                            textTransform: 'uppercase',
+                                                            fontSize: '0.75rem',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                            {d.status_penerimaan === 'sudah' ? 'Sudah Diserahkan' : 'Belum'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ display: 'flex', gap: '0.5rem', padding: '1rem' }}>
+                                                        <button className="btn-icon" onClick={() => openModal('distribusi', d)}><Edit2 size={16} /></button>
+                                                        <button className="btn-icon danger" onClick={() => { setDeleteModal({ open: true, id: d.id, type: 'distribusi' }) }}><Trash2 size={16} /></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+
+                        </div>
+                    </>
+                ) : (
+                    <div className="no-print" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', height: 'calc(100vh - 200px)' }}>
+                        {/* Left Column: Yatim */}
+                        <BeneficiaryList
+                            type="yatim"
+                            title="Database Anak Yatim / Piatu"
+                            colorClass="primary"
+                        />
+
+                        {/* Right Column: Dhuafa */}
+                        <BeneficiaryList
+                            type="dhuafa"
+                            title="Database Dhuafa Prioritas"
+                            colorClass="warning"
+                        />
+                    </div>
+                )
+            }
+
+            {/* Hidden Print Content */}
+            <div className="print-only">
+                <div ref={printRef}>
+                    <PrintLayout
+                        title={mainTab === 'penerimaan' ? 'Laporan Penerimaan Santunan' : 'Laporan Penyaluran Santunan'}
+                        subtitle={`Tahun ${yearFilter} ${rtFilter !== 'all' ? `• RT ${rtFilter}` : ''} ${activityFilter !== '' ? `• Kegiatan: ${activities.find(a => a.id == activityFilter)?.nama_kegiatan || '-'}` : ''}`}
+                        signer={{ left: leftSigner, right: rightSigner }}
+                    >
+                        {mainTab === 'penerimaan' ? (
+                            <table className="table-print-boxed">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '40px' }}>No</th>
+                                        <th>Donatur / Sumber</th>
+                                        <th>Kegiatan</th>
+                                        <th style={{ width: '120px' }}>Tanggal</th>
+                                        <th style={{ width: '150px', textAlign: 'right' }}>Jumlah</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {donations.map((d, idx) => (
+                                        <tr key={d.id}>
+                                            <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                                            <td>{d.nama_donatur}</td>
+                                            <td>{activities.find(a => a.id === d.activity_id)?.nama_kegiatan || '-'}</td>
+                                            <td style={{ textAlign: 'center' }}>{formatDate(d.tanggal)}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp {Number(d.jumlah).toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ background: '#eee', fontWeight: 'bold' }}>
+                                        <td colSpan="4" style={{ textAlign: 'center' }}>TOTAL PENERIMAAN</td>
+                                        <td style={{ textAlign: 'right' }}>Rp {donations.reduce((a, b) => a + Number(b.jumlah), 0).toLocaleString()}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        ) : (
+                            <table className="table-print-boxed">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '40px' }}>No</th>
+                                        <th>Nama Penerima</th>
+                                        <th style={{ width: '100px' }}>Kategori</th>
+                                        <th style={{ width: '80px' }}>RT</th>
+                                        <th>Kegiatan</th>
+                                        <th style={{ width: '150px', textAlign: 'right' }}>Besaran</th>
+                                        <th style={{ width: '100px' }}>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {distributions.map((d, idx) => (
+                                        <tr key={d.id}>
+                                            <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                                            <td>{d.nama_anak}</td>
+                                            <td style={{ textAlign: 'center', textTransform: 'capitalize' }}>{d.kategori}</td>
+                                            <td style={{ textAlign: 'center' }}>{d.rt?.kode || '-'}</td>
+                                            <td>{activities.find(a => a.id === d.activity_id)?.nama_kegiatan || '-'}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp {Number(d.besaran).toLocaleString()}</td>
+                                            <td style={{ textAlign: 'center' }}>{d.status_penerimaan === 'sudah' ? 'Diserahkan' : 'Belum'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ background: '#eee', fontWeight: 'bold' }}>
+                                        <td colSpan="5" style={{ textAlign: 'center' }}>TOTAL PENYALURAN</td>
+                                        <td style={{ textAlign: 'right' }}>Rp {distributions.reduce((a, b) => a + Number(b.besaran), 0).toLocaleString()}</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        )}
+
+                        <div className="signature-grid">
+                            <div className="signature-item">
+                                <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmal'}</div>
+                                <div className="signature-name">{leftSigner?.nama_pejabat || '...................'}</div>
+                                {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP: {leftSigner.nip}</div>}
+                            </div>
+                            <div className="signature-item">
+                                <div className="signature-title">{rightSigner?.jabatan || 'Bendahara'}</div>
+                                <div className="signature-name">{rightSigner?.nama_pejabat || '...................'}</div>
+                                {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP: {rightSigner.nip}</div>}
+                            </div>
+                        </div>
+                    </PrintLayout>
+                </div>
+            </div>
+
+            {/* Input Modal */}
+            {
+                showModal && (
+                    <div className="pd-overlay" style={{ zIndex: 9999, background: 'rgba(0,0,0,0.5)', position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div className="card animate-scale-in" style={{ width: '500px', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto', background: 'var(--card-bg)' }}>
+                            <h3 className="mb-4 font-bold text-lg" style={{ color: 'var(--text-main)' }}>{modalType === 'donasi' ? 'Input Donasi Santunan' : 'Input Penyaluran'}</h3>
+                            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '1rem' }}>
+
+                                {/* Common Field: Activity */}
+                                <div className="form-group">
+                                    <label>Kegiatan Santunan</label>
+                                    <select className="input w-full" value={formData.activity_id} onChange={e => setFormData({ ...formData, activity_id: e.target.value })}>
+                                        <option value="">-- Pilih Kegiatan (Opsional) --</option>
+                                        {activities.map(a => <option key={a.id} value={a.id}>{a.nama_kegiatan}</option>)}
+                                    </select>
+                                </div>
+
+                                {modalType === 'donasi' ? (
+                                    <>
+                                        <div className="form-group"><label>Nama Donatur</label><input required className="input" value={formData.nama_donatur} onChange={e => setFormData({ ...formData, nama_donatur: e.target.value })} /></div>
+                                        <div className="form-group"><label>Jumlah (Rp)</label><input type="number" required className="input" value={formData.jumlah} onChange={e => setFormData({ ...formData, jumlah: e.target.value })} /></div>
+                                        <div className="form-group"><label>Tanggal</label><input type="date" required className="input" value={formData.tanggal} onChange={e => setFormData({ ...formData, tanggal: e.target.value })} /></div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="form-group"><label>Kategori Penerima</label>
+                                            <select
+                                                className="input"
+                                                value={formData.kategori}
+                                                onChange={e => {
+                                                    // Reset beneficiary when category changes
+                                                    setFormData({ ...formData, kategori: e.target.value, beneficiary_id: '', nama_anak: '', rt_id: '' });
+                                                }}
+                                            >
+                                                <option value="yatim">Anak Yatim / Piatu</option>
+                                                <option value="dhuafa">Kaum Dhuafa</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Beneficiary Selector */}
+                                        <div className="form-group">
+                                            <label>Nama Penerima (Dari Database)</label>
+                                            <select
+                                                required
+                                                className="input"
+                                                value={formData.beneficiary_id || ''}
+                                                onChange={e => {
+                                                    const selectedId = e.target.value;
+                                                    const selectedBen = beneficiaries.find(b => b.id == selectedId);
+                                                    if (selectedBen) {
+                                                        setFormData({
+                                                            ...formData,
+                                                            beneficiary_id: selectedId,
+                                                            nama_anak: selectedBen.nama_lengkap, // Auto-fill name
+                                                            rt_id: selectedBen.rt_id // Auto-fill RT
+                                                        });
+                                                    } else {
+                                                        setFormData({ ...formData, beneficiary_id: '', nama_anak: '', rt_id: '' });
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">-- Pilih Penerima --</option>
+                                                {beneficiaries
+                                                    .filter(b => b.jenis === formData.kategori && b.is_active) // Filter by active & category
+                                                    .map(b => (
+                                                        <option key={b.id} value={b.id}>
+                                                            {b.nama_lengkap} (RT {b.rt?.kode})
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                            <small className="text-muted d-block mt-1">Hanya menampilkan data aktif.</small>
+                                        </div>
+
+                                        <div className="form-group"><label>Wilayah RT</label>
+                                            <select disabled className="input" style={{ background: 'var(--input-bg)', opacity: 0.7 }} value={formData.rt_id} onChange={e => setFormData({ ...formData, rt_id: e.target.value })}>
+                                                {rtList.map(r => <option key={r.id} value={r.id}>RT {r.kode}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="form-group"><label>Besaran (Rp)</label><input type="number" required className="input" value={formData.besaran} onChange={e => setFormData({ ...formData, besaran: e.target.value })} /></div>
+                                        <div className="form-group"><label>Status Penyerahan</label>
+                                            <select className="input" value={formData.status_penerimaan} onChange={e => setFormData({ ...formData, status_penerimaan: e.target.value })}>
+                                                <option value="sudah">Sudah Diserahkan</option>
+                                                <option value="belum">Belum Diserahkan</option>
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                                    <button type="button" className="btn btn-outline-danger" style={{ flex: 1 }} onClick={() => setShowModal(false)}>BATAL</button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1.5 }}>SIMPAN DATA</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
             <ConfirmDeleteModal
                 open={deleteModal.open}
-                onConfirm={confirmDelete}
-                onCancel={() => setDeleteModal({ open: false, id: null, type: null, loading: false })}
-                loading={deleteModal.loading}
+                onConfirm={async () => {
+                    if (deleteModal.type === 'donasi') await deleteSantunanDonation(deleteModal.id);
+                    else await deleteSantunanApi(deleteModal.id);
+                    setDeleteModal({ open: false, id: null, type: null });
+                    loadSummaries(); loadTableData();
+                }}
+                onCancel={() => setDeleteModal({ open: false, id: null, type: null })}
             />
-            {/* Hidden Print Container */}
-            <div style={{ position: 'absolute', top: 0, left: -10000, width: '210mm', zIndex: -1000 }}>
-                <div ref={printRef}>
-                    <SantunanPrint data={filteredAnakYatim} defaultKetua={defaultKetua} defaultKoordinator={defaultKoordinator} />
-                </div>
-            </div>
-        </div>
+        </div >
     );
 };
 

@@ -37,4 +37,9 @@ class Assignment extends Model
     {
         return $this->belongsTo(OrganizationStructure::class, 'structure_id');
     }
+
+    public function agenda()
+    {
+        return $this->belongsTo(AgendaPost::class, 'agenda_id');
+    }
 }

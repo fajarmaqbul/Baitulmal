@@ -224,5 +224,26 @@ export const fetchAsnafByRT = async (rtId) => {
     }
 };
 
+/**
+ * Report a death event
+ * 
+ * @param {Object} data - Death report data
+ * @param {string} data.nama - Name of deceased
+ * @param {number} data.rt_id - RT ID
+ * @param {number} data.amount - Santunan amount
+ * @param {string} data.tanggal - Date of death
+ * @param {number} data.asnaf_id - Optional Asnaf ID
+ * @returns {Promise<Object>} Response data
+ */
+export const reportDeath = async (data) => {
+    try {
+        const response = await api.post('/death-events', data);
+        return response.data;
+    } catch (error) {
+        console.error('Error reporting death:', error);
+        throw error;
+    }
+};
+
 // Export the configured axios instance for custom requests if needed
 export default api;

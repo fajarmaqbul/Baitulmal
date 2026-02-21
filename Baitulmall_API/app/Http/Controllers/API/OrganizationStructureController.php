@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\OrganizationStructure;
@@ -13,6 +13,16 @@ class OrganizationStructureController extends Controller
         return response()->json([
             'success' => true,
             'data' => OrganizationStructure::all()
+        ]);
+    }
+
+    public function eventsIndex()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => OrganizationStructure::where('tipe', 'Project')
+                ->withCount('assignments')
+                ->get()
         ]);
     }
 
@@ -52,5 +62,65 @@ class OrganizationStructureController extends Controller
         }
     }
 
-    // Additional methods can be added as needed
+    public function show($id)
+    {
+        $structure = OrganizationStructure::find($id);
+        if (!$structure) return response()->json(['message' => 'Not found'], 404);
+        return response()->json(['success' => true, 'data' => $structure]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $structure = OrganizationStructure::find($id);
+        if (!$structure) return response()->json(['message' => 'Not found'], 404);
+
+        // Convert empty date strings to null
+        if ($request->has('tanggal_mulai') && $request->input('tanggal_mulai') === '') {
+            $request->merge(['tanggal_mulai' => null]);
+        }
+        if ($request->has('tanggal_selesai') && $request->input('tanggal_selesai') === '') {
+            $request->merge(['tanggal_selesai' => null]);
+        }
+
+        try {
+            $validated = $request->validate([
+                'kode_struktur' => 'sometimes|required|unique:organization_structures,kode_struktur,' . $id,
+                'nama_struktur' => 'sometimes|required|string',
+                'tipe' => 'sometimes|required|in:Struktural,Kepanitiaan,Project,Event,Panitia',
+                'parent_id' => 'nullable|exists:organization_structures,id',
+                'tanggal_mulai' => 'nullable|date',
+                'tanggal_selesai' => 'nullable|date',
+                'is_active' => 'nullable|boolean'
+            ]);
+
+            $structure->update($validated);
+            return response()->json(['success' => true, 'data' => $structure]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
+    }
+
+    public function destroy($id)
+    {
+        $structure = OrganizationStructure::find($id);
+        if (!$structure) return response()->json(['message' => 'Not found'], 404);
+
+        try {
+            // Manually handle restricted foreign key: Delete all assignments first
+            \App\Models\Assignment::where('structure_id', $id)->delete();
+            
+            $structure->delete();
+            return response()->json(['success' => true, 'message' => 'Event and its committee members deleted successfully']);
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete structure:', ['id' => $id, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete. ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

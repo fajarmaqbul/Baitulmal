@@ -1,6 +1,6 @@
 import React from 'react';
 // Deprecated context removed
-console.warn('Deprecated context detected');
+// Deprecated context removed
 import { Palette } from 'lucide-react';
 
 const UserPreference = () => {
@@ -8,16 +8,18 @@ const UserPreference = () => {
         const saved = localStorage.getItem('cardTheme');
         return saved ? saved : 'clean';
     });
+    const themes = [
+        { id: 'pure-admin', name: 'Pure Admin', desc: 'SB Admin Pro (Original Look)' },
+
+        { id: 'slate-dark-pro', name: 'Slate Dark Pro', desc: 'Modern & Deep Dark Mode' },
+        { id: 'clean', name: 'Clean Minimalist', desc: 'Modern, subtle, transparent' },
+        { id: 'classic', name: 'Classic Boxed', desc: 'Formal, solid clean look' }
+    ];
+
     React.useEffect(() => {
         localStorage.setItem('cardTheme', cardTheme);
+        document.documentElement.setAttribute('data-theme', cardTheme);
     }, [cardTheme]);
-
-    const themes = [
-        { id: 'clean', name: 'Clean Minimalist', desc: 'Modern, subtle, transparent' },
-        { id: 'classic', name: 'Classic Boxed', desc: 'Formal, solid clean look' },
-        { id: 'modern', name: 'Soft Modern', desc: 'Gradient, rounded, vibrant' },
-        { id: 'simple', name: 'Simple Text', desc: 'Data-focused, no decorations' }
-    ];
 
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '1rem' }}>

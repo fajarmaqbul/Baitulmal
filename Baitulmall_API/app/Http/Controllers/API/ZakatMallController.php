@@ -35,6 +35,7 @@ class ZakatMallController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'nama_muzaki' => 'nullable|string',
             'rt_id' => 'required|exists:rts,id',
             'kategori' => 'required|string',
             'jumlah' => 'required|numeric|min:1000',
@@ -67,6 +68,7 @@ class ZakatMallController extends Controller
         $zakatMall = ZakatMall::findOrFail($id);
 
         $validated = $request->validate([
+            'nama_muzaki' => 'nullable|string',
             'rt_id' => 'sometimes|exists:rts,id',
             'kategori' => 'sometimes|string',
             'jumlah' => 'sometimes|numeric|min:1000',

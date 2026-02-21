@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('organization_structures')->onDelete('set null');
             $table->string('kode_struktur')->unique(); // e.g. BAITULMALL_2024
             $table->string('nama_struktur'); // e.g. Pengurus Baitulmall 2024-2029
-            $table->enum('tipe', ['Struktural', 'Kepanitiaan', 'Project', 'Event', 'Panitia'])->default('Struktural');
+            $table->enum('tipe', ['Struktural', 'Kepanitiaan', 'Project', 'Event', 'Panitia', 'Agenda'])->default('Struktural');
             $table->date('tanggal_mulai')->nullable();
             $table->date('tanggal_selesai')->nullable();
             $table->boolean('is_active')->default(true);

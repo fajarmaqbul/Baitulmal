@@ -89,9 +89,9 @@ const EventFormModal = ({ open, onClose, onSubmit, initialData = null, loading =
                 maxWidth: '550px',
                 maxHeight: '90vh',
                 overflowY: 'auto',
-                background: '#fff',
-                borderRadius: '8px',
-                border: '1px solid #dee2e6',
+                background: 'var(--card-bg)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-color)',
                 padding: '2rem'
             }}>
                 {/* Header */}
@@ -145,7 +145,7 @@ const EventFormModal = ({ open, onClose, onSubmit, initialData = null, loading =
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Nama Event */}
                     <div className="form-group">
-                        <label className="label" style={{ marginBottom: '0.5rem', display: 'block', fontWeight: 600, color: '#495057' }}>Nama Event / Kegiatan</label>
+                        <label className="label" style={{ marginBottom: '0.5rem', display: 'block', fontWeight: 600, color: 'var(--text-main)' }}>Nama Event / Kegiatan</label>
                         <input
                             type="text"
                             name="nama_struktur"

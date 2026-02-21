@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchZakatFitrahList, fetchMuzakiStats, createZakatFitrah, updateZakatFitrah, deleteZakatFitrahApi } from '../services/zakatFitrahApi';
-import { fetchActiveSigner } from '../services/documentApi';
+import { fetchActiveSigner } from '../services/documentApi'; // Removed but keeping line for safe deletion if needed or just empty
+
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import PrintLayout from '../components/PrintLayout';
 import OfficialDocumentTemplate from '../components/Print/OfficialDocumentTemplate';
 import { usePagePrint } from '../hooks/usePagePrint';
+import { useSignatureRule } from '../hooks/useSignatureRule';
 import {
     Plus,
     Filter,
@@ -20,10 +22,13 @@ import {
     Save,
     Info,
     RefreshCw,
+    TrendingUp,
     Lock,
     Unlock,
     Heart,
-    ExternalLink
+    ExternalLink,
+    Shield,
+    Search
 } from 'lucide-react';
 import { exportToExcel } from '../utils/dataUtils';
 import { fetchAsnafList, fetchRTs } from '../services/asnafApi';
@@ -39,6 +44,8 @@ const ZakatFitrah = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null); // error state
     const [deleteModal, setDeleteModal] = useState({ open: false, id: null, loading: false });
+    const [confirmDistModal, setConfirmDistModal] = useState({ open: false, loading: false });
+    const [receiptModal, setReceiptModal] = useState({ open: false, data: null });
 
     const [activeTab, setActiveTab] = useState('muzaki');
     const [selectedRt, setSelectedRt] = useState('01');
@@ -50,6 +57,28 @@ const ZakatFitrah = () => {
     const [strukturInti, setStrukturInti] = useState(null); // object → null
     const [isLocked, setIsLocked] = useState(false);
     const [settingsList, setSettingsList] = useState([]);
+
+    // Pagination & Search State
+    const [page, setPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [pagination, setPagination] = useState({
+        current_page: 1,
+        last_page: 1,
+        total: 0,
+        from: 0,
+        to: 0
+    });
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setPage(1); // Reset to page 1 on new search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
 
 
     // Muzaki CRUD State
@@ -69,8 +98,7 @@ const ZakatFitrah = () => {
         return s ? s.value : fallback;
     };
 
-    const defaultKetua = getSetting('default_signer_ketua', '................');
-    const defaultSekretaris = getSetting('default_signer_sekretaris', '................');
+
 
 
     // Print State
@@ -81,8 +109,19 @@ const ZakatFitrah = () => {
 
     const [selectedReceiptData, setSelectedReceiptData] = useState(null);
 
+
+    // --- Signature Hook ---
+    // --- Signature Hook ---
+    const { leftSigner, rightSigner } = useSignatureRule(
+        'zakat_fitrah',
+        activeTab === 'distribusi' ? (distribusiKategori === 'Sabil' ? 'Fisabilillah' : distribusiKategori) : 'ALL',
+        activeTab === 'distribusi' && distribusiScope === 'warga' ? selectedRt : 'ALL'
+    );
+
     // --- Zakat Fitrah Logic ---
-    const ZAKAT_RATE_KG = 2.5;
+    const ZAKAT_RATE_KG = Number(getSetting('zakat_fitrah_kgs', '2.5'));
+    const ZAKAT_RICE_PRICE = Number(getSetting('zakat_rice_price', '15000'));
+
 
     // Define all 8 Asnaf
     const ASNAF_CATEGORIES = ['Fakir', 'Miskin', 'Amil', 'Mualaf', 'Riqab', 'Gharim', 'Fisabilillah', 'Ibnu Sabil'];
@@ -90,6 +129,13 @@ const ZakatFitrah = () => {
     // State for Distribution Portions (Bagian)
     // Default: 1 portion = 12.5%
     const [asnafPortions, setAsnafPortions] = useState(null); // object → null
+
+    // Effect to prevent "stale" settings usage if needed, though render-cycle variable is enough
+    useEffect(() => {
+        // Debugger for settings
+        // console.log("Active Settings:", { ZAKAT_RATE_KG, ZAKAT_RICE_PRICE });
+    }, [settingsList]);
+
 
     const handlePortionChange = (category, value) => {
         if (isLocked) return;
@@ -103,8 +149,18 @@ const ZakatFitrah = () => {
         try {
             setLoading(true);
 
-            // 1. Save/Update asnaf_portions
+            // Calculate total percentage
             const portionsData = asnafPortions || ASNAF_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {});
+            const totalPercentage = Object.values(portionsData).reduce((acc, p) => acc + (p * 0.125), 0);
+
+            // Validation: Must be exactly 100% (with small margin for float precision)
+            if (Math.abs(totalPercentage - 1) > 0.0001) {
+                alert(`Gagal menyimpan! Total alokasi harus tepat 100% (Saat ini: ${(totalPercentage * 100).toFixed(1)}%).\n\nPastikan total "Bagian" adalah 8.0 (8 x 12.5% = 100%).`);
+                setLoading(false);
+                return;
+            }
+
+            // 1. Save/Update asnaf_portions
             const portionsValue = JSON.stringify(portionsData);
 
             const existingPortions = settingsList.find(s => s.key_name === 'asnaf_portions');
@@ -159,6 +215,9 @@ const ZakatFitrah = () => {
 
                 const res = await fetchSettings();
                 if (res.success) setSettingsList(res.data);
+            } else {
+                // If setting record is missing but state was locked (e.g. initial state)
+                setIsLocked(false);
             }
         } catch (err) {
             console.error("Failed to unlock:", err);
@@ -168,49 +227,79 @@ const ZakatFitrah = () => {
     };
 
     // --- API Data Fetching ---
+    // Separate Settings Load for faster/independent execution
+    const loadConfig = async () => {
+        try {
+            const res = await fetchSettings();
+            if (res.success) {
+                console.log("Settings Loaded:", res.data); // Debug
+                setSettingsList(res.data || []);
+
+                const lockSetting = res.data.find(s => s.key_name === 'lock_distribusi');
+                setIsLocked(lockSetting?.value === 'true' || lockSetting?.value === '1');
+
+                const portionsSetting = res.data.find(s => s.key_name === 'asnaf_portions');
+                if (portionsSetting && portionsSetting.value) {
+                    try {
+                        setAsnafPortions(JSON.parse(portionsSetting.value));
+                    } catch (e) {
+                        console.error("Failed to parse asnaf_portions", e);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load settings config:", err);
+        }
+    };
+
     const loadData = async () => {
         try {
             setLoading(true);
-            const [muzakiRes, statsRes, asnafRes, rtsRes, signerRes, settingsRes] = await Promise.all([
-                fetchZakatFitrahList({ tahun: selectedTahun, per_page: 1000 }), // Fetch all for now
+            loadConfig(); // Ensure settings are refreshed whenever data is reloaded
+            // Removed fetchSettings from here to avoid blocking by large data fetches
+            const [muzakiRes, statsRes, asnafRes, rtsRes, signerRes] = await Promise.all([
+                fetchZakatFitrahList({
+                    tahun: selectedTahun,
+                    per_page: 20,
+                    page: page,
+                    search: debouncedSearch
+                }),
                 fetchMuzakiStats(selectedTahun),
                 fetchAsnafList({ per_page: 1000 }), // Fetch ALL Asnaf regardless of year
                 fetchRTs(),
-                fetchActiveSigner('BAITULMALL_2023', 'Ketua Umum'),
-                fetchSettings()
+                fetchActiveSigner()
             ]);
 
             setMuzakiList(muzakiRes.data || []);
+            setPagination({
+                current_page: muzakiRes.current_page || 1,
+                last_page: muzakiRes.last_page || 1,
+                total: muzakiRes.total || 0,
+                from: muzakiRes.from || 0,
+                to: muzakiRes.to || 0
+            });
             setStats(statsRes);
             setAsnafList((asnafRes.data || []).map(a => ({
                 ...a,
                 jumlahJiwa: Number(a.jumlah_jiwa || 0),
                 rt: a.rt || { kode: '??' } // Ensure rt object exists
             })));
-            setRtList(Array.isArray(rtsRes) ? rtsRes : (rtsRes.data || []));
+            const uniqueRts = Array.isArray(rtsRes) ? rtsRes : (rtsRes.data || []);
+            setRtList(uniqueRts);
 
-            // Process Settings
-            if (settingsRes.success) {
-                setSettingsList(settingsRes.data);
-                const lockSetting = settingsRes.data.find(s => s.key_name === 'lock_distribusi');
-                setIsLocked(lockSetting?.value === 'true' || lockSetting?.value === '1');
-
-                const portionsSetting = settingsRes.data.find(s => s.key_name === 'asnaf_portions');
-                if (portionsSetting && portionsSetting.value) {
-                    try {
-                        setAsnafPortions(JSON.parse(portionsSetting.value));
-                    } catch (e) {
-                        console.error("Failed to parse asnaf_portions JSON", e);
-                    }
+            // Auto-select first RT if current is invalid
+            if (uniqueRts.length > 0) {
+                setFormData(prev => {
+                    const exists = uniqueRts.find(r => r.kode === prev.rt);
+                    return exists ? prev : { ...prev, rt: uniqueRts[0].kode };
+                });
+                // Also update selectedRt for filter if invalid
+                if (distribusiScope === 'warga') {
+                    setSelectedRt(prev => uniqueRts.find(r => r.kode === prev) ? prev : uniqueRts[0].kode);
                 }
             }
 
-            // Set Active Signer from SDM API
-            if (signerRes.success) {
-                setStrukturInti({ ketua: signerRes.data.nama_lengkap, data: signerRes.data });
-            } else {
-                setStrukturInti({ ketua: 'Masjid Baitulmall Kandri' });
-            }
+            setStrukturInti({ ketua: 'Masjid Baitulmal Kandri' });
 
         } catch (err) {
             console.error("Failed to load Zakat Fitrah data:", err);
@@ -220,9 +309,17 @@ const ZakatFitrah = () => {
         }
     };
 
+    // Load Settings once on mount
+    useEffect(() => {
+        loadConfig();
+    }, []);
+
+    // Load Main Data when filter changes
     React.useEffect(() => {
         loadData();
-    }, [selectedTahun]);
+    }, [selectedTahun, page, debouncedSearch]);
+
+
 
     // 1. Total Collection (From API Stats)
     const totalMuzakiJiwa = stats?.total_jiwa ?? 0;
@@ -351,12 +448,7 @@ const ZakatFitrah = () => {
 
 
             if (typeof setZakatDistribution === 'function') {
-                // Use setTimeout to allow UI to respond and prevent freeze
-                setTimeout(() => {
-                    setZakatDistribution(newDistribution);
-                    setDistribusiStatus({}); // Clear selection
-                    alert("Data berhasil dikonfirmasi!");
-                }, 100);
+                setConfirmDistModal({ open: true, loading: false });
             } else {
                 console.error("setZakatDistribution is not a function in context");
                 alert("Terjadi kesalahan sistem: Fungsi penyimpanan tidak ditemukan. Silakan refresh halaman.");
@@ -374,11 +466,17 @@ const ZakatFitrah = () => {
         e.preventDefault();
         try {
             const rtObj = rtList.find(r => r.kode === formData.rt);
+
+            if (!rtObj) {
+                alert("Data RT tidak valid. Mohon pilih RT yang tersedia.");
+                return;
+            }
+
             const jiwa = Number(formData.jumlahJiwa);
 
             const payload = {
                 nama: formData.nama,
-                rt_id: rtObj?.id || 1,
+                rt_id: rtObj.id,
                 jumlah_jiwa: jiwa,
                 jumlah_beras_kg: jiwa * ZAKAT_RATE_KG,
                 status_bayar: formData.status,
@@ -409,8 +507,9 @@ const ZakatFitrah = () => {
         setFormData({
             nama: item.nama,
             rt: item.rt?.kode || '01',
-            jumlahJiwa: item.jumlah_jiwa, // API: snake_case
-            status: item.status_bayar, // API: snake_case
+            jumlahJiwa: item.jumlah_jiwa,
+            // Ensure Title Case for validation (Lunas/Belum Lunas) regardless of API response (lunas/belum lunas)
+            status: item.status_bayar ? (item.status_bayar.charAt(0).toUpperCase() + item.status_bayar.slice(1).toLowerCase()) : 'Lunas',
             tahun: item.tahun || selectedTahun
         });
         setShowModal(true);
@@ -490,9 +589,12 @@ const ZakatFitrah = () => {
 
     const handleOpenReceipt = (muzaki) => {
         setSelectedReceiptData(muzaki);
-        setTimeout(() => {
-            handlePrintReceipt();
-        }, 100);
+        setReceiptModal({ open: true, data: muzaki });
+    };
+
+    const confirmPrintReceipt = () => {
+        handlePrintReceipt();
+        setReceiptModal({ open: false, data: null });
     };
 
     const ZakatFitrahPrint = () => (
@@ -502,7 +604,8 @@ const ZakatFitrah = () => {
                 : activeTab === 'muzaki'
                     ? 'Daftar Muzaki (Zakat Fitrah)'
                     : 'Perhitungan Distribusi Zakat'}
-            subtitle={`Baitulmall Masjid Fajar Maqbul - Tahun ${selectedTahun}`}
+            subtitle={`Baitulmal Masjid Fajar Maqbul - Tahun ${selectedTahun}`}
+            signer={{ left: leftSigner, right: rightSigner }}
         >
             {activeTab === 'muzaki' && (
                 <>
@@ -540,13 +643,14 @@ const ZakatFitrah = () => {
                     </table>
                     <div className="signature-grid">
                         <div className="signature-item">
-                            <div className="signature-title">{strukturInti?.data?.jabatan || 'Ketua Baitulmall'}</div>
-                            <div className="signature-name">{strukturInti?.ketua || defaultKetua}</div>
-                            {strukturInti?.data?.no_sk && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>No. SK: {strukturInti.data.no_sk}</div>}
+                            <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmall'}</div>
+                            <div className="signature-name">{leftSigner?.nama_pejabat || '............................'}</div>
+                            {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {leftSigner.nip}</div>}
                         </div>
                         <div className="signature-item">
-                            <div className="signature-title">Bendahara</div>
-                            <div className="signature-name">{getSetting('default_signer_bendahara', '................')}</div>
+                            <div className="signature-title">{rightSigner?.jabatan || ''}</div>
+                            <div className="signature-name">{rightSigner?.nama_pejabat || '............................'}</div>
+                            {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {rightSigner.nip}</div>}
                         </div>
                     </div>
                 </>
@@ -594,14 +698,17 @@ const ZakatFitrah = () => {
                             </tr>
                         </tfoot>
                     </table>
+
                     <div className="signature-grid">
                         <div className="signature-item">
-                            <div className="signature-title">Ketua Baitulmall</div>
-                            <div className="signature-name">{strukturInti?.ketua || defaultKetua}</div>
+                            <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmall'}</div>
+                            <div className="signature-name">{leftSigner?.nama_pejabat || '............................'}</div>
+                            {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {leftSigner.nip}</div>}
                         </div>
                         <div className="signature-item">
-                            <div className="signature-title">Sekretaris</div>
-                            <div className="signature-name">{strukturInti?.data?.sekretaris || defaultSekretaris}</div>
+                            <div className="signature-title">{rightSigner?.jabatan || ''}</div>
+                            <div className="signature-name">{rightSigner?.nama_pejabat || '............................'}</div>
+                            {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {rightSigner.nip}</div>}
                         </div>
                     </div>
                 </>
@@ -613,10 +720,10 @@ const ZakatFitrah = () => {
                         <thead>
                             <tr>
                                 <th style={{ width: '40px' }}>No</th>
-                                <th>Kepala Keluarga</th>
-                                <th style={{ width: '100px' }}>Jumlah Jiwa</th>
-                                <th style={{ width: '120px' }}>Zakat (KG)</th>
-                                <th style={{ width: '150px' }}>Keterangan</th>
+                                <th style={{ width: '30%' }}>Kepala Keluarga</th>
+                                <th style={{ width: '80px' }}>Jumlah Jiwa</th>
+                                <th style={{ width: '100px' }}>Zakat (KG)</th>
+                                <th>Keterangan</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -635,24 +742,27 @@ const ZakatFitrah = () => {
                                 <td colSpan="2" style={{ textAlign: 'center' }}>Total</td>
                                 <td style={{ textAlign: 'center' }}>{totalJiwaView} Jiwa</td>
                                 <td style={{ textAlign: 'center' }}>{totalBerasView.toFixed(2)} KG</td>
-                                <td></td>
+                                <td style={{ textAlign: 'center' }}></td>
                             </tr>
                         </tfoot>
                     </table>
 
                     <div className="signature-grid">
                         <div className="signature-item">
-                            <div className="signature-title">Ketua Baitulmall</div>
-                            <div className="signature-name">{strukturInti?.ketua || defaultKetua}</div>
+                            <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmall'}</div>
+                            <div className="signature-name">{leftSigner?.nama_pejabat || '............................'}</div>
+                            {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {leftSigner.nip}</div>}
                         </div>
                         <div className="signature-item">
-                            <div className="signature-title">Ketua RT {selectedRt}</div>
-                            <div className="signature-name">{rtList.find(r => r.kode === selectedRt)?.ketua || '................'}</div>
+                            <div className="signature-title">{rightSigner?.jabatan || 'Sekretaris / Bendahara'}</div>
+                            <div className="signature-name">{rightSigner?.nama_pejabat || '............................'}</div>
+                            {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {rightSigner.nip}</div>}
                         </div>
                     </div>
                 </>
-            )}
-        </PrintLayout>
+            )
+            }
+        </PrintLayout >
     );
 
     const MuzakiReceipt = () => (
@@ -703,215 +813,256 @@ const ZakatFitrah = () => {
 
 
     return (
-        <div className="no-print">
+        <div className="no-print animate-fade-in">
             {/* Global Stats & Layout Reorganization */}
-            {/* Global Stats & Layout Reorganization */}
-            <div style={{ marginBottom: '2rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
-                    {/* Stats Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--primary)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Beras Terkumpul</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>{totalBeras.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>KG</span></div>
+            <div style={{ marginBottom: '2.5rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    {/* Stats Row - Now Full Width */}
+                    <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                        <div className="card stat-hover" style={{ borderLeft: '4px solid var(--primary)', padding: '1.25rem' }}>
+                            <div className="d-flex align-items-center gap-3 mb-2">
+                                <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(0, 144, 231, 0.08)', color: 'var(--primary)' }}>
+                                    <TrendingUp size={18} />
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Beras Terkumpul</div>
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{totalBeras.toLocaleString()} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>KG</span></div>
                         </div>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--info)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Total Mustahik</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--info)' }}>{totalAsnafJiwa} <span style={{ fontSize: '0.8rem' }}>Jiwa</span></div>
+                        <div className="card stat-hover" style={{ borderLeft: '4px solid var(--info)', padding: '1.25rem' }}>
+                            <div className="d-flex align-items-center gap-3 mb-2">
+                                <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(143, 95, 232, 0.08)', color: 'var(--info)' }}>
+                                    <Users size={18} />
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total Mustahik</div>
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{totalAsnafJiwa} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Jiwa</span></div>
                         </div>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--warning)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Siap Distribusi</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--warning)' }}>{totalBeras.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>KG</span></div>
+                        <div className="card stat-hover" style={{ borderLeft: '4px solid var(--warning)', padding: '1.25rem' }}>
+                            <div className="d-flex align-items-center gap-3 mb-2">
+                                <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(255, 171, 0, 0.08)', color: 'var(--warning)' }}>
+                                    <RefreshCw size={18} />
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Siap Distribusi</div>
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{totalBeras.toLocaleString()} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>KG</span></div>
                         </div>
-                        <div className="card" style={{ padding: '1rem', borderTop: '4px solid var(--success)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Telah Didistribusi</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)' }}>{totalDistributed.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>KG</span></div>
+                        <div className="card stat-hover" style={{ borderLeft: '4px solid var(--success)', padding: '1.25rem' }}>
+                            <div className="d-flex align-items-center gap-3 mb-2">
+                                <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(0, 210, 91, 0.08)', color: 'var(--success)' }}>
+                                    <CheckCircle size={18} />
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Telah Terdistribusi</div>
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{totalDistributed.toLocaleString()} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>KG</span></div>
                         </div>
                     </div>
 
-                    {/* Action Buttons (Top Right) */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', alignContent: 'start' }}>
-                        <select
-                            className="btn"
-                            style={{ border: '1px solid var(--card-border)', background: '#fff', cursor: 'pointer' }}
-                            value={selectedTahun}
-                            onChange={(e) => {
-                                const yr = e.target.value;
-                                setSelectedTahun(yr);
-                                setFormData(prev => ({ ...prev, tahun: yr }));
-                            }}
-                        >
-                            {[2024, 2025, 2026, 2027, 2028].map(y => (
-                                <option key={y} value={y.toString()}>{y}</option>
-                            ))}
-                        </select>
-                        <button className="btn" onClick={loadData} disabled={loading} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff', border: '1px solid var(--card-border)' }}>
-                            <RefreshCw size={16} className={loading ? 'spin' : ''} />
-                            <span>Refresh</span>
-                        </button>
-                        <button className="btn" onClick={handlePrint} disabled={loading} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#fff', border: '1px solid var(--card-border)' }}>
-                            <Printer size={16} /> Print
-                        </button>
-                        <button className="btn" style={{ border: '1px solid var(--card-border)', background: '#fff' }} onClick={() => setShowPolicy(true)}>
-                            Info
-                        </button>
+                    {/* Toolbar: TTD & Actions */}
+                    <div className="d-flex justify-content-end align-items-center">
+                        {/* Signature Status Preview */}
 
-                        {settingsList.find(s => s.key_name === 'enable_online_muzaki')?.value === 'true' && (
-                            <a
-                                href="/daftar-zakat"
-                                target="_blank"
-                                className="btn"
-                                style={{
-                                    gridColumn: 'span 2',
-                                    background: 'var(--success)',
-                                    color: '#fff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '0.5rem',
-                                    border: 'none',
-                                    textDecoration: 'none',
-                                    fontWeight: 600,
-                                    fontSize: '0.85rem'
+
+                        {/* Action Buttons */}
+                        <div className="d-flex align-items-center gap-2">
+                            {/* Signature Status Preview - Moved Here */}
+                            <div className="d-none d-md-flex align-items-center gap-2 small px-3 py-2 rounded-pill border me-2" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border-color)' }}>
+                                <Shield size={14} className={leftSigner ? "text-success" : "text-muted"} />
+                                <span style={{ color: 'var(--text-muted)' }}>TTD:</span>
+                                {leftSigner || rightSigner ? (
+                                    <strong style={{ color: 'var(--text-main)' }}>
+                                        {leftSigner?.nama_pejabat?.split(' ')[0] || '?'} & {rightSigner?.nama_pejabat?.split(' ')[0] || '?'}
+                                    </strong>
+                                ) : (
+                                    <span className="text-danger fst-italic">Belum diset</span>
+                                )}
+                            </div>
+                            <select
+                                className="input"
+                                style={{ background: 'rgba(0,0,0,0.03)', height: '42px', fontWeight: 700, width: 'auto', paddingRight: '2rem' }}
+                                value={selectedTahun}
+                                onChange={(e) => {
+                                    const yr = e.target.value;
+                                    setSelectedTahun(yr);
+                                    setFormData(prev => ({ ...prev, tahun: yr }));
                                 }}
                             >
-                                <ExternalLink size={16} /> Buka Link Pendaftaran Publik
-                            </a>
-                        )}
-                    </div>
-                </div>
-
-                {/* Inline Form - ALways Visible (Removed activeTab check) */}
-                <div className="card" style={{ padding: '1.5rem', background: '#e9ecef', marginBottom: '1.5rem', border: 'none' }}>
-                    <form onSubmit={(e) => {
-                        e.preventDefault();
-                        handleSubmit(e);
-                    }} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr 1fr 1fr', gap: '1rem', alignItems: 'end' }}>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Nama Muzaki</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Nama Lengkap"
-                                value={formData.nama}
-                                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                                required
-                                style={{ background: '#fff' }}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Jiwa</label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                placeholder="0"
-                                value={formData.jumlahJiwa}
-                                onChange={(e) => setFormData({ ...formData, jumlahJiwa: e.target.value })}
-                                required
-                                style={{ background: '#fff' }}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Beras (Kg)</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={(Number(formData.jumlahJiwa || 0) * 2.5).toFixed(1)}
-                                disabled
-                                style={{ backgroundColor: '#fff' }}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', display: 'block' }}>Keterangan / RT</label>
-                            <select
-                                className="form-control"
-                                value={formData.rt}
-                                onChange={(e) => setFormData({ ...formData, rt: e.target.value })}
-                                style={{ background: '#fff' }}
-                            >
-                                {rtList.map(rt => (
-                                    <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>
+                                {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                    <option key={y} value={y.toString()}>{y}</option>
                                 ))}
                             </select>
-                        </div>
 
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Simpan</button>
-                        <button type="button" className="btn btn-ghost" style={{ width: '100%', background: '#fff', border: '1px solid var(--danger)', color: 'var(--danger)' }} onClick={() => setFormData({ nama: '', rt: '01', jumlahJiwa: '', status: 'Lunas', tahun: selectedTahun })}>Batal</button>
-                    </form>
+                            <button className="btn btn-ghost" onClick={loadData} disabled={loading} style={{ border: '1px solid var(--border-color)', height: '42px' }}>
+                                <RefreshCw size={16} className={loading ? 'spin' : ''} />
+                            </button>
+                            <button className="btn btn-ghost" onClick={handlePrint} disabled={loading} style={{ border: '1px solid var(--border-color)', height: '42px' }}>
+                                <Printer size={16} />
+                            </button>
+                            <button className="btn btn-primary" style={{ height: '42px' }} onClick={handleExport}>
+                                <Download size={16} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="glass-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--card-border)', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex' }}>
-                        {['muzaki', 'calculation', 'distribusi', 'distributed'].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                style={{
-                                    padding: '1rem 2rem',
-                                    background: 'none',
-                                    border: 'none',
-                                    color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
-                                    borderBottom: activeTab === tab ? '2px solid var(--primary)' : 'none',
-                                    cursor: 'pointer',
-                                    fontWeight: 600
-                                }}
-                            >
-                                {tab === 'muzaki' ? 'Data Muzaki' : tab === 'calculation' ? 'Perhitungan Distribusi' : tab === 'distribusi' ? 'Distribusi per RT' : 'Telah Didistribusi'}
-                            </button>
-                        ))}
-                    </div>
-                    {activeTab === 'muzaki' && (
-                        <div>{/* Empty placeholder for clean diff */}</div>
-                    )}
+            {activeTab === 'muzaki' && (
+                <div className="glass-card" style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.02)', marginBottom: '1.5rem', border: '1px solid var(--border-color)' }}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1.2fr 1.5fr auto auto', gap: '1.25rem', alignItems: 'end' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Nama Muzaki</label>
+                            <input type="text" className="input" style={{ height: '40px', width: '100%' }} value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} placeholder="Nama Lengkap" required />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Jiwa</label>
+                            <input type="number" className="input" style={{ height: '40px', width: '100%', textAlign: 'center', fontWeight: 700 }} value={formData.jumlahJiwa} onChange={e => setFormData({ ...formData, jumlahJiwa: e.target.value })} required min="1" />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Beras (Kg)</label>
+                            <div className="input d-flex align-items-center justify-content-center" style={{ height: '40px', width: '100%', fontWeight: 800, color: 'var(--primary)', background: 'rgba(0,0,0,0.03)' }}>
+                                {(Number(formData.jumlahJiwa || 0) * 2.5).toFixed(1)}
+                            </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Wilayah / RT</label>
+                            <select className="input" style={{ height: '40px', width: '100%', fontWeight: 600 }} value={formData.rt} onChange={e => setFormData({ ...formData, rt: e.target.value })}>
+                                {rtList.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
+                            </select>
+                        </div>
+                        <button type="submit" className="btn btn-primary">
+                            <Plus size={18} /> SIMPAN
+                        </button>
+                        <button type="button" className="btn btn-outline-danger" onClick={() => setFormData({ nama: '', rt: '01', jumlahJiwa: '', status: 'Lunas', tahun: selectedTahun })}>
+                            RESET
+                        </button>
+                    </form>
+                </div>
+            )}
+
+            <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.01)' }}>
+                    {['muzaki', 'calculation', 'distribusi', 'distributed'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            style={{
+                                padding: '1.25rem 2rem',
+                                background: 'none',
+                                border: 'none',
+                                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                                borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
+                                cursor: 'pointer',
+                                fontWeight: 800,
+                                fontSize: '0.75rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '1.5px',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            {tab === 'muzaki' ? 'DATA MUZAKI' : tab === 'calculation' ? 'KALKULASI' : tab === 'distribusi' ? 'DISTRIBUSI RT' : 'HISTORY'}
+                        </button>
+                    ))}
                 </div>
 
-
-
-                <div className="table-container">
+                <div className="table-container" style={{ margin: 0, border: 'none', borderRadius: 0 }}>
                     {activeTab === 'muzaki' && (
-                        <table className="table-compact">
-                            <thead>
-                                <tr>
-                                    <th className="col-no">NO</th>
-                                    <th>Nama Muzaki</th>
-                                    <th>RT</th>
-                                    <th>Jumlah Jiwa</th>
-                                    <th>Jumlah Beras (KG)</th>
-                                    <th>Status</th>
-                                    <th>Timestamp</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan="7" className="text-center p-4"><Loader2 className="spin" /></td></tr>
-                                ) : muzakiList.map((m, index) => (
-                                    <tr key={m.id}>
-                                        <td className="col-no">{index + 1}</td>
-                                        <td style={{ fontWeight: 500 }}>{m.nama}</td>
-                                        <td>RT {m.rt?.kode || '-'}</td>
-                                        <td style={{ textAlign: 'center' }}>{m.jumlah_jiwa}</td>
-                                        <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{Number(m.jumlah_beras_kg).toLocaleString()} KG</td>
-                                        <td><span className="text-success">{m.status_bayar}</span></td>
-                                        <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            {m.created_at ? new Date(m.created_at).toLocaleDateString('en-GB') : '-'}
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button className="btn btn-ghost" style={{ padding: '0.4rem', color: 'var(--primary)' }} onClick={() => handleOpenReceipt(m)} title="Cetak Kuitansi"><Printer size={16} /></button>
-                                                <button className="btn btn-ghost" style={{ padding: '0.4rem' }} onClick={() => handleEdit(m)}><Edit2 size={16} /></button>
-                                                <button className="btn btn-ghost" style={{ padding: '0.4rem', color: 'var(--danger)' }} onClick={() => handleDeleteClick(m.id)} title="Hapus"><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <>
+                            <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center bg-[rgba(0,0,0,0.01)]">
+                                <div className="text-sm text-muted">
+                                    Menampilkan {pagination.from || 0} - {pagination.to || 0} dari {pagination.total || 0} data
+                                </div>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Cari Nama Muzaki..."
+                                        className="input pr-4 py-2 text-sm w-64"
+                                        style={{ height: '38px', paddingLeft: '45px' }} // Forced padding to prevent overlap
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" style={{ pointerEvents: 'none' }}>
+                                        <Search size={16} />
+                                    </div>
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute right-2 top-2 text-muted hover:text-danger"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="table-compact w-full">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '60px' }}>NO</th>
+                                            <th>Nama Muzaki</th>
+                                            <th>RT</th>
+                                            <th style={{ textAlign: 'center' }}>Jiwa</th>
+                                            <th>Jumlah Beras</th>
+                                            <th>Status</th>
+                                            <th>Timestamp</th>
+                                            <th style={{ width: '150px', textAlign: 'center' }}>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <tr><td colSpan="8" className="text-center py-8"><Loader2 className="spin" /></td></tr>
+                                        ) : muzakiList.map((m, index) => (
+                                            <tr key={m.id}>
+                                                <td>{index + 1}</td>
+                                                <td style={{ fontWeight: 700, color: 'var(--text-main)' }}>{m.nama}</td>
+                                                <td><span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.75rem' }}>RT {m.rt?.kode || '-'}</span></td>
+                                                <td style={{ textAlign: 'center', fontWeight: 600 }}>{m.jumlah_jiwa}</td>
+                                                <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{Number(m.jumlah_beras_kg).toLocaleString()} KG</td>
+                                                <td>
+                                                    <div className="status-indicator">
+                                                        <div className="dot dot-success"></div>
+                                                        <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.75rem' }}>VERIFIED</span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                    {m.created_at ? new Date(m.created_at).toLocaleDateString('id-ID') : '-'}
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                                        <button className="btn btn-ghost" style={{ padding: '0.4rem', color: 'var(--primary)' }} onClick={() => handleOpenReceipt(m)} title="Cetak Kuitansi"><Printer size={14} /></button>
+                                                        <button className="btn btn-ghost" style={{ padding: '0.4rem' }} onClick={() => handleEdit(m)}><Edit2 size={14} /></button>
+                                                        <button className="btn btn-ghost" style={{ padding: '0.4rem', color: 'var(--danger)' }} onClick={() => handleDeleteClick(m.id)} title="Hapus"><Trash2 size={14} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {pagination.last_page > 1 && (
+                                <div className="flex justify-between items-center p-4 border-t border-[var(--border-color)] bg-[rgba(0,0,0,0.01)]">
+                                    <span className="text-xs text-muted">
+                                        Halaman {pagination.current_page} dari {pagination.last_page}
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                                            disabled={page === 1 || loading}
+                                            className="px-3 py-1 text-xs rounded border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--border-color)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Sebelumnya
+                                        </button>
+                                        <button
+                                            onClick={() => setPage(prev => Math.min(prev + 1, pagination.last_page))}
+                                            disabled={page === pagination.last_page || loading}
+                                            className="px-3 py-1 text-xs rounded border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--border-color)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Selanjutnya
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
 
 
@@ -957,8 +1108,8 @@ const ZakatFitrah = () => {
                                         <th style={{ width: '150px' }}>Bagian (1 = 12.5%)</th>
                                         <th>Persentase</th>
                                         <th>Total Jiwa</th>
-                                        <th>Jatah Beras (KG)</th>
-                                        <th>Beras / Jiwa (KG)</th>
+                                        <th style={{ textAlign: 'center' }}>Total (KG)</th>
+                                        <th style={{ textAlign: 'center' }}>/Jiwa (KG)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -975,26 +1126,32 @@ const ZakatFitrah = () => {
                                                     disabled={isLocked}
                                                     className="input"
                                                     style={{
-                                                        width: '80px',
-                                                        padding: '0.25rem 0.5rem',
-                                                        backgroundColor: isLocked ? '#f8f9fa' : '#fff',
+                                                        width: '70px',
+                                                        padding: '0.2rem 0.5rem',
+                                                        backgroundColor: isLocked ? 'rgba(0,0,0,0.1)' : 'var(--card-bg)',
+                                                        color: isLocked ? 'var(--text-muted)' : 'var(--text-main)',
+                                                        border: '1px solid var(--border-color)',
                                                         cursor: isLocked ? 'not-allowed' : 'text'
                                                     }}
                                                 />
                                             </td>
                                             <td>{(d.percentage * 100).toFixed(1)}%</td>
                                             <td>{d.totalJiwa}</td>
-                                            <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{d.jatahAsnaf.toLocaleString()}</td>
-                                            <td style={{ fontWeight: 700 }}>{d.berasPerJiwa.toFixed(2)}</td>
+                                            <td style={{ fontWeight: 800, color: 'var(--primary)', textAlign: 'center' }}>{d.jatahAsnaf.toLocaleString()}</td>
+                                            <td style={{ fontWeight: 800, textAlign: 'center' }}>{d.berasPerJiwa.toFixed(2)}</td>
                                         </tr>
                                     ))}
-                                    <tr style={{ background: 'var(--hover-bg)', fontWeight: 'bold' }}>
+                                    <tr style={{
+                                        fontWeight: 'bold',
+                                        background: 'rgba(0,0,0,0.2)',
+                                        color: Math.abs(distribution.reduce((acc, curr) => acc + curr.percentage, 0) - 1) > 0.0001 ? 'var(--danger)' : 'inherit'
+                                    }}>
                                         <td colSpan="2">TOTAL</td>
-                                        <td>
+                                        <td style={{ color: Math.abs(distribution.reduce((acc, curr) => acc + curr.percentage, 0) - 1) > 0.0001 ? 'var(--danger)' : 'var(--success)' }}>
                                             {(distribution.reduce((acc, curr) => acc + curr.percentage, 0) * 100).toFixed(1)}%
                                         </td>
                                         <td>{totalAsnafJiwa}</td>
-                                        <td>{distribution.reduce((acc, curr) => acc + curr.jatahAsnaf, 0).toLocaleString()}</td>
+                                        <td style={{ textAlign: 'center' }}>{distribution.reduce((acc, curr) => acc + curr.jatahAsnaf, 0).toLocaleString()}</td>
                                         <td></td>
                                     </tr>
                                 </tbody>
@@ -1003,7 +1160,7 @@ const ZakatFitrah = () => {
                     )}
 
                     {activeTab === 'distribusi' && (
-                        <div style={{ marginBottom: '1.5rem' }}>
+                        <div style={{ marginBottom: '1.5rem' }} className="animate-fade-in">
                             {/* Scope Selector */}
                             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                                 <button
@@ -1121,22 +1278,23 @@ const ZakatFitrah = () => {
                             <table className="table-compact" style={{ marginTop: '1rem' }}>
                                 <thead>
                                     <tr>
-                                        <th className="col-no">NO</th>
+                                        <th style={{ width: '60px' }}>NO</th>
                                         <th>Kepala Keluarga</th>
                                         <th>Kategori</th>
                                         {distribusiScope === 'khusus' && <th>Asal RT</th>}
-                                        <th>Jumlah Jiwa</th>
-                                        <th>Jatah/Jiwa (KG)</th>
-                                        <th>Total Terima (KG)</th>
-                                        <th>Status Distribusi
+                                        <th style={{ textAlign: 'center' }}>Jiwa</th>
+                                        <th style={{ textAlign: 'center' }}>Jatah (KG)</th>
+                                        <th style={{ textAlign: 'center' }}>Total (KG)</th>
+                                        <th style={{ width: '180px' }}>
+                                            Status
                                             <button
                                                 onClick={handleCheckAll}
                                                 style={{
-                                                    marginLeft: '8px',
+                                                    marginLeft: '12px',
                                                     border: 'none',
                                                     background: 'transparent',
                                                     cursor: 'pointer',
-                                                    color: filteredAsnafDistribusi.length > 0 && filteredAsnafDistribusi.every(item => distribusiStatus[item.id]) ? 'var(--success)' : 'var(--text-muted)'
+                                                    color: filteredAsnafDistribusi.length > 0 && filteredAsnafDistribusi.every(item => distribusiStatus[item.id]) ? 'var(--primary)' : 'var(--text-muted)'
                                                 }}
                                                 title="Check All"
                                             >
@@ -1152,27 +1310,21 @@ const ZakatFitrah = () => {
                                     {filteredAsnafDistribusi.map((item, index) => {
                                         const perJiwa = getBerasPerJiwa(item.kategori);
                                         const totalTerima = item.jumlahJiwa * perJiwa;
-                                        // Handle potential undefined zakatDistribution
-                                        const currentDist = Array.isArray(zakatDistribution) ? zakatDistribution : [];
-                                        const isDistributed = currentDist.includes(item.id);
-
-                                        // Ensure id is treated consistently as string/number for lookup
+                                        const isDistributed = (Array.isArray(zakatDistribution) ? zakatDistribution : []).includes(item.id);
                                         const isSelected = !!distribusiStatus[item.id];
 
                                         return (
-                                            <tr key={item.id} style={{
-                                                background: isSelected ? 'rgba(34, 197, 94, 0.05)' : 'transparent',
-                                                opacity: isDistributed ? 0.6 : 1
-                                            }}>
-                                                <td className="col-no">{index + 1}</td>
-                                                <td style={{ fontWeight: 500 }}>{item.nama}</td>
+                                            <tr key={item.id} style={{ opacity: isDistributed ? 0.6 : 1 }}>
+                                                <td>{index + 1}</td>
+                                                <td style={{ fontWeight: 600 }}>{item.nama}</td>
                                                 <td>
                                                     <span style={{
-                                                        padding: '2px 8px',
-                                                        borderRadius: '12px',
+                                                        padding: '2px 10px',
+                                                        borderRadius: '4px',
                                                         background: 'rgba(255,255,255,0.05)',
-                                                        fontSize: '0.8rem',
-                                                        border: '1px solid rgba(255,255,255,0.1)'
+                                                        fontSize: '0.75rem',
+                                                        color: 'var(--text-muted)',
+                                                        border: '1px solid var(--border-color)'
                                                     }}>
                                                         {item.kategori === 'Fisabilillah' ? 'Sabil' : item.kategori}
                                                     </span>
@@ -1180,36 +1332,68 @@ const ZakatFitrah = () => {
                                                 {distribusiScope === 'khusus' && <td>RT {item.rt?.kode || '-'}</td>}
                                                 <td style={{ textAlign: 'center' }}>{item.jumlahJiwa}</td>
                                                 <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{perJiwa.toFixed(2)}</td>
-                                                <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--primary)' }}>
-                                                    {totalTerima.toFixed(2)} KG
+                                                <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary)' }}>
+                                                    {totalTerima.toFixed(2)}
                                                 </td>
                                                 <td>
                                                     {isDistributed ? (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>
-                                                            <CheckCircle size={16} /> Tersalurkan
+                                                        <div className="status-indicator">
+                                                            <div className="dot dot-success"></div>
+                                                            <span style={{ color: 'var(--success)' }}>Tersalurkan</span>
                                                         </div>
                                                     ) : (
                                                         <button
                                                             className="btn btn-ghost"
                                                             style={{
-                                                                padding: '0.4rem 0.75rem',
+                                                                padding: '0.4rem 0.5rem',
                                                                 color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 gap: '0.5rem',
-                                                                width: '100%',
-                                                                justifyContent: 'flex-start'
+                                                                fontSize: '0.85rem'
                                                             }}
                                                             onClick={() => toggleDistribusi(item.id)}
                                                         >
                                                             {isSelected ? <CheckCircle size={16} /> : <Circle size={16} />}
-                                                            {isSelected ? 'Siap Konfirm' : 'Belum'}
+                                                            <span style={{ fontWeight: isSelected ? 700 : 400 }}>{isSelected ? 'Siap Konfirm' : 'Belum'}</span>
                                                         </button>
                                                     )}
                                                 </td>
                                             </tr>
                                         );
                                     })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Distributed Tab */}
+                    {activeTab === 'distributed' && (
+                        <div className="table-container">
+                            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--success)' }}>Laporan Distribusi Realisasi</h4>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                    Data beras yang telah diserahterimakan kepada Mustahik.
+                                </p>
+                            </div>
+                            <table className="table-compact">
+                                <thead>
+                                    <tr>
+                                        <th className="col-no">NO</th>
+                                        <th>Nama Penerima</th>
+                                        <th>Kategori</th>
+                                        <th>RT</th>
+                                        <th>Jumlah Beras</th>
+                                        <th>Tanggal Distribusi</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colSpan="7" className="text-center p-4" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                            Belum ada data distribusi yang tercatat.
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1262,11 +1446,11 @@ const ZakatFitrah = () => {
                                     <input
                                         type="text"
                                         className="input"
-                                        value={formData.jumlahJiwa ? `${(Number(formData.jumlahJiwa) * 2.5).toFixed(1)} KG` : '0 KG'}
+                                        value={formData.jumlahJiwa ? `${(Number(formData.jumlahJiwa) * ZAKAT_RATE_KG).toFixed(1)} KG` : '0 KG'}
                                         disabled
                                         style={{ background: 'var(--card-bg)', color: 'var(--primary)', fontWeight: 700 }}
                                     />
-                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Rumus: Jumlah Jiwa × 2.5 KG</small>
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Rumus: Jumlah Jiwa × {ZAKAT_RATE_KG} KG</small>
                                 </div>
                                 <div className="form-group">
                                     <label className="label">Asal RT</label>
@@ -1278,10 +1462,25 @@ const ZakatFitrah = () => {
                                         {rtList.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
                                     </select>
                                 </div>
+                                <div className="form-group">
+                                    <label className="label">Status Pembayaran</label>
+                                    <select
+                                        className="input"
+                                        value={formData.status}
+                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    >
+                                        <option value="Lunas">Lunas</option>
+                                        <option value="Belum Lunas">Belum Lunas</option>
+                                    </select>
+                                </div>
 
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={closeModal}>Batal</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan Data</button>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                                    <button type="button" className="btn btn-outline-danger" style={{ flex: 1 }} onClick={closeModal}>
+                                        BATAL
+                                    </button>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1.5 }}>
+                                        SIMPAN DATA
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -1289,36 +1488,7 @@ const ZakatFitrah = () => {
                 )
             }
             {/* Distributed Tab */}
-            {activeTab === 'distributed' && (
-                <div className="table-container">
-                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
-                        <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--success)' }}>Laporan Distribusi Realisasi</h4>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            Data beras yang telah diserahterimakan kepada Mustahik.
-                        </p>
-                    </div>
-                    <table className="table-compact">
-                        <thead>
-                            <tr>
-                                <th className="col-no">NO</th>
-                                <th>Nama Penerima</th>
-                                <th>Kategori</th>
-                                <th>RT</th>
-                                <th>Jumlah Beras</th>
-                                <th>Tanggal Distribusi</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colSpan="7" className="text-center p-4" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                    Belum ada data distribusi yang tercatat.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            )}
+
 
             {/* Policy Modal */}
             {
@@ -1392,6 +1562,103 @@ const ZakatFitrah = () => {
                     </div>
                 )
             }
+            {/* Distribution Confirmation Modal */}
+            {
+                confirmDistModal.open && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                        <div className="glass-card" style={{ width: '100%', maxWidth: '400px', border: '1px solid rgba(var(--primary-rgb), 0.2)' }}>
+                            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(var(--primary-rgb), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+                                    <CheckCircle size={32} className="text-primary" />
+                                </div>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Konfirmasi Distribusi</h3>
+                                <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                                    Apakah Anda yakin ingin mengonfirmasi penyaluran zakat untuk <b>{Object.keys(distribusiStatus).filter(id => distribusiStatus[id]).length}</b> KK terpilih?
+                                </p>
+                            </div>
+
+                            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                                    <span>Total Jiwa:</span>
+                                    <span style={{ fontWeight: 600 }}>{totalJiwaView} Jiwa</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: 'var(--primary)' }}>
+                                    <span style={{ fontWeight: 600 }}>Total Beras:</span>
+                                    <span style={{ fontWeight: 800 }}>{totalBerasView.toFixed(2)} KG</span>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button
+                                    className="btn btn-ghost"
+                                    style={{ flex: 1 }}
+                                    onClick={() => setConfirmDistModal({ open: false, loading: false })}
+                                    disabled={confirmDistModal.loading}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ flex: 1 }}
+                                    onClick={() => {
+                                        setConfirmDistModal(prev => ({ ...prev, loading: true }));
+                                        const selectedIds = Object.keys(distribusiStatus).filter(id => distribusiStatus[id]);
+                                        const currentDist = Array.isArray(zakatDistribution) ? zakatDistribution : [];
+                                        const newDistribution = [...new Set([...currentDist.map(Number), ...selectedIds.map(Number)])];
+
+                                        setTimeout(() => {
+                                            setZakatDistribution(newDistribution);
+                                            setDistribusiStatus({});
+                                            setConfirmDistModal({ open: false, loading: false });
+                                            alert("Penyaluran berhasil dikonfirmasi!");
+                                        }, 600);
+                                    }}
+                                    disabled={confirmDistModal.loading}
+                                >
+                                    {confirmDistModal.loading ? <Loader2 className="spin" /> : 'Ya, Konfirmasi'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Receipt Preview Modal */}
+            {
+                receiptModal.open && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}>
+                        <div className="glass-card" style={{ width: '100%', maxWidth: '600px', border: '1px solid rgba(255,255,255,0.2)', padding: '2rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <Printer className="text-primary" /> Preview Kuitansi
+                                </h3>
+                                <button onClick={() => setReceiptModal({ open: false, data: null })} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.5rem' }}>&times;</button>
+                            </div>
+
+                            <div style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '4px', boxShadow: '0 0 20px rgba(0,0,0,0.1)', marginBottom: '2rem', maxHeight: '50vh', overflowY: 'auto' }}>
+                                {/* Simplified Preview of the Receipt Component */}
+                                <div style={{ borderBottom: '2px solid #000', paddingBottom: '1rem', marginBottom: '1rem', textAlign: 'center' }}>
+                                    <h4 style={{ margin: 0 }}>BAITULMAL FAJAR MAQBUL</h4>
+                                    <p style={{ margin: 0, fontSize: '0.8rem' }}>KUITANSI ZAKAT FITRAH {selectedTahun}</p>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', gap: '0.5rem', fontSize: '0.9rem' }}>
+                                    <span>Muzaki</span><span>:</span><span style={{ fontWeight: 700 }}>{receiptModal.data?.nama}</span>
+                                    <span>Asal RT</span><span>:</span><span>RT {receiptModal.data?.rt?.kode}</span>
+                                    <span>Jumlah Jiwa</span><span>:</span><span>{receiptModal.data?.jumlah_jiwa} Jiwa</span>
+                                    <span>Zakat</span><span>:</span><span style={{ fontWeight: 800 }}>{Number(receiptModal.data?.jumlah_beras_kg).toLocaleString()} KG BERAS</span>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setReceiptModal({ open: false, data: null })}>Tutup</button>
+                                <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={confirmPrintReceipt}>
+                                    <Printer size={18} /> Cetak Sekarang
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
             <ConfirmDeleteModal
                 open={deleteModal.open}
                 onConfirm={confirmDelete}
@@ -1399,7 +1666,7 @@ const ZakatFitrah = () => {
                 loading={deleteModal.loading}
             />
             {/* Hidden Print Container */}
-            <div style={{ position: 'absolute', top: 0, left: -10000, width: '210mm', zIndex: -1000 }}>
+            <div className="print-only">
                 <div ref={printRef}>
                     <ZakatFitrahPrint />
                 </div>
@@ -1407,7 +1674,7 @@ const ZakatFitrah = () => {
                     {selectedReceiptData && <MuzakiReceipt />}
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 

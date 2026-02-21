@@ -1,104 +1,258 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, UsersRound, HeartHandshake, Briefcase, Baby, Settings, LogOut, HandCoins, UserCog, MapPin, Calendar } from 'lucide-react';
+import { useNavigate, NavLink } from 'react-router-dom';
+import { LayoutDashboard, UsersRound, HeartHandshake, Briefcase, Baby, Settings, LogOut, HandCoins, UserCog, MapPin, Calendar, Landmark, Box, ArrowLeftRight, MessageSquare, Shield, FileText, ShoppingBag } from 'lucide-react';
+import { logout } from '../../services/authApi';
+import { useRole, ROLES } from '../../contexts/RoleContext';
 
 const Sidebar = () => {
+    // Force reload
+    const navigate = useNavigate();
+    const [kepengurusanOpen, setKepengurusanOpen] = React.useState(false);
+    const { hasPermission, currentRole } = useRole();
+
+    const handleLogout = (e) => {
+        e.preventDefault();
+        logout();
+    };
+
     return (
-        <aside className="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
-            <div className="sidebar-brand">
-                <a href="/" className="brand-link">
-                    <img src="https://adminlte.io/themes/v3/dist/img/AdminLTELogo.png" alt="Logo" className="brand-image opacity-75 shadow" />
-                    <span className="brand-text fw-light">Baitulmall</span>
+        <nav className="sidebar" id="sidebar">
+            <div className="sidebar-brand-wrapper d-none d-lg-flex align-items-center justify-content-center" style={{ height: '70px', padding: '10px' }}>
+                <a className="sidebar-brand brand-logo" href="/" style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '1.5rem', textDecoration: 'none', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ background: 'rgba(0, 144, 231, 0.2)', padding: '8px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Landmark size={28} />
+                    </div>
+                    <span style={{ fontSize: '1.1rem' }}>BAITULMAL</span>
                 </a>
             </div>
 
-            <div className="sidebar-wrapper">
-                <nav className="mt-2">
-                    <ul className="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
-                        <li className="nav-item">
-                            <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <LayoutDashboard size={18} className="nav-icon" />
-                                <p>Dashboard</p>
-                            </NavLink>
-                        </li>
+            <ul className="nav">
 
-                        <li className="nav-header">MANAJEMEN</li>
+                <li className="nav-category">UTAMA</li>
+                {hasPermission('Dashboard') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                                <LayoutDashboard size={18} />
+                            </span>
+                            <span className="menu-title">Dashboard</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/zakat-fitrah" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <HandCoins size={18} className="nav-icon" />
-                                <p>Zakat Fitrah</p>
-                            </NavLink>
-                        </li>
+                <li className="nav-category">LAYANAN ZIS</li>
+                {hasPermission('Zakat Fitrah') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/zakat-fitrah" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 210, 91, 0.1)', color: 'var(--success)' }}>
+                                <HandCoins size={18} />
+                            </span>
+                            <span className="menu-title">Zakat Fitrah</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/zakat-mall" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <Briefcase size={18} className="nav-icon" />
-                                <p>Zakat Mal</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Zakat Mal') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/zakat-mall" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(255, 171, 0, 0.08)', color: 'var(--warning)' }}>
+                                <Briefcase size={18} />
+                            </span>
+                            <span className="menu-title">Zakat Mal</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/sedekah" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <HeartHandshake size={18} className="nav-icon" />
-                                <p>Sedekah</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Sedekah') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/sedekah" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(252, 66, 74, 0.1)', color: 'var(--danger)' }}>
+                                <HeartHandshake size={18} />
+                            </span>
+                            <span className="menu-title">Sedekah</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/santunan" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <Baby size={18} className="nav-icon" />
-                                <p>Santunan</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Santunan') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/santunan" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(143, 95, 232, 0.08)', color: 'var(--info)' }}>
+                                <Baby size={18} />
+                            </span>
+                            <span className="menu-title">Santunan</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/kepengurusan" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <UserCog size={18} className="nav-icon" />
-                                <p>Kepengurusan</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Donasi Tematik') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/crowdfunding" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(252, 66, 74, 0.1)', color: 'var(--danger)' }}>
+                                <HeartHandshake size={18} />
+                            </span>
+                            <span className="menu-title">Donasi Tematik</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/event-management" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <Calendar size={18} className="nav-icon" />
-                                <p>Event & Panitia</p>
-                            </NavLink>
-                        </li>
+                <li className="nav-category">MASTER & PENGURUS</li>
+                {hasPermission('Kepengurusan') && (
+                    <li className="nav-item menu-items">
+                        <div
+                            className="nav-link"
+                            onClick={() => setKepengurusanOpen(!kepengurusanOpen)}
+                            style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <span className="menu-icon" style={{ background: 'rgba(105, 112, 122, 0.08)', color: 'var(--text-muted)' }}>
+                                    <UserCog size={18} />
+                                </span>
+                                <span className="menu-title">Kepengurusan</span>
+                            </div>
+                            <i className={`mdi ${kepengurusanOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'}`} style={{ fontSize: '1rem' }}></i>
+                        </div>
+                        {kepengurusanOpen && (
+                            <ul className="flex-column" style={{ listStyle: 'none', padding: '0.5rem 0 0.5rem 1.5rem', margin: 0 }}>
+                                <li className="nav-item">
+                                    <NavLink to="/kepengurusan-takmir" className="nav-link" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>Pengurus Takmir</NavLink>
+                                </li>
+                                <li className="nav-item">
+                                    <NavLink to="/kepengurusan-baitulmall" className="nav-link" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>Pengurus Baitulmal</NavLink>
+                                </li>
+                                <li className="nav-item">
+                                    <NavLink to="/kepengurusan-rw" className="nav-link" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>Pengurus RW</NavLink>
+                                </li>
+                                <li className="nav-item">
+                                    <NavLink to="/kepengurusan-rt" className="nav-link" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>Pengurus RT</NavLink>
+                                </li>
+                            </ul>
+                        )}
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/asnaf" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <UsersRound size={18} className="nav-icon" />
-                                <p>Data Asnaf</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Data Asnaf') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/asnaf" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                                <UsersRound size={18} />
+                            </span>
+                            <span className="menu-title">Data Asnaf (Master)</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/peta-asnaf" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <MapPin size={18} className="nav-icon" />
-                                <p>Peta Asnaf</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Event & Panitia') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/event-management" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 210, 91, 0.1)', color: 'var(--success)' }}>
+                                <Calendar size={18} />
+                            </span>
+                            <span className="menu-title">Event & Panitia</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-header">PENGATURAN</li>
+                <li className="nav-category">ASET & LOGISTIK</li>
+                {hasPermission('Inventaris Aset') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/inventory" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                                <Box size={18} />
+                            </span>
+                            <span className="menu-title">Inventaris Aset</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                <Settings size={18} className="nav-icon" />
-                                <p>Pengaturan</p>
-                            </NavLink>
-                        </li>
+                {hasPermission('Inventaris Aset') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/inventory/loans" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(255, 171, 0, 0.08)', color: 'var(--warning)' }}>
+                                <ArrowLeftRight size={18} />
+                            </span>
+                            <span className="menu-title">Peminjaman</span>
+                        </NavLink>
+                    </li>
+                )}
 
-                        <li className="nav-item">
-                            <a href="#" className="nav-link text-danger">
-                                <LogOut size={18} className="nav-icon" />
-                                <p>Logout</p>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-        </aside>
+                <li className="nav-category">EKONOMI UMKM</li>
+                <li className="nav-item menu-items">
+                    <NavLink to="/product-management" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                            <ShoppingBag size={18} />
+                        </span>
+                        <span className="menu-title">Manajemen Produk</span>
+                    </NavLink>
+                </li>
+                <li className="nav-item menu-items">
+                    <NavLink to="/etalase" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                            <ShoppingBag size={18} />
+                        </span>
+                        <span className="menu-title">Etalase UMKM</span>
+                    </NavLink>
+                </li>
+
+                <li className="nav-category">ADMINISTRASI</li>
+                {hasPermission('Riwayat Pesan') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/notifications" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 210, 91, 0.1)', color: 'var(--success)' }}>
+                                <MessageSquare size={18} />
+                            </span>
+                            <span className="menu-title">Riwayat Pesan</span>
+                        </NavLink>
+                    </li>
+                )}
+
+                <li className="nav-item menu-items">
+                    <NavLink to="/secretariat" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                            <FileText size={18} />
+                        </span>
+                        <span className="menu-title">Kesekretariatan</span>
+                    </NavLink>
+                </li>
+
+                {hasPermission('Pengaturan') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(108, 114, 147, 0.1)', color: '#6c7293' }}>
+                                <Settings size={18} />
+                            </span>
+                            <span className="menu-title">Pengaturan</span>
+                        </NavLink>
+                    </li>
+                )}
+
+                <li className="nav-category">AKSES</li>
+                <li className="nav-item menu-items">
+                    <div onClick={handleLogout} className="nav-link text-danger" style={{ cursor: 'pointer' }}>
+                        <span className="menu-icon" style={{ background: 'rgba(252, 66, 74, 0.1)', color: 'var(--danger)' }}>
+                            <LogOut size={18} />
+                        </span>
+                        <span className="menu-title">Logout</span>
+                    </div>
+                </li>
+                {/* ROLE INFO - Moved to bottom */}
+                <li className="nav-item nav-profile" style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                    <div className="nav-link" style={{ cursor: 'default' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <div className="nav-profile-image">
+                                <span className="menu-icon" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                                    <Shield size={18} />
+                                </span>
+                            </div>
+                            <div className="d-flex flex-column ms-3">
+                                <span className="font-weight-bold mb-0" style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{currentRole}</span>
+                                <span className="text-small" style={{ color: 'var(--text-muted)' }}>Logged in</span>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </nav>
     );
 };
 

@@ -1,33 +1,24 @@
-import axios from './asnafApi';
+import api from './authApi';
 
 /**
  * Kepengurusan API Service
  * Centralizes organization structure data.
  */
 
-// Mock data for now, ideally this comes from an API endpoint like /organization/structure
-// Mock data removed.
-const MOCK_STRUKTUR_INTI = [];
-
-/**
- * Fetch Board of Directors (Pengurus Inti)
- * @returns {Promise<Array>}
- */
-export const fetchStrukturInti = async () => {
+export const fetchKepengurusan = async (kodeStruktur) => {
     try {
-        // Try to fetch from real API if available
-        // const response = await axios.get('/organization/structure');
-        // return response.data;
-        return [];
+        const response = await api.get('/kepengurusan', {
+            params: { kode_struktur: kodeStruktur }
+        });
+        return response.data;
     } catch (err) {
-        return [];
+        console.error("Failed to fetch kepengurusan:", err);
+        throw err;
     }
 };
 
-export const fetchPengurusTakmir = async () => {
-    return []; // Placeholder
-};
+export const fetchStrukturInti = async () => fetchKepengurusan('BAITULMALL_2023');
+export const fetchPengurusTakmir = async () => fetchKepengurusan('TAKMIR_2023');
+export const fetchPengurusRW = async () => fetchKepengurusan('RW_01_2023');
+export const fetchPengurusRT = async (rtCode) => fetchKepengurusan(rtCode ? `RT_${rtCode}_2023` : null);
 
-export const fetchPengurusRW = async () => {
-    return []; // Placeholder
-};

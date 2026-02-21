@@ -4,9 +4,9 @@ const Footer = () => {
     return (
         <footer className="app-footer">
             <div className="float-end d-none d-sm-inline">
-                Versi 1.0.0
+                Versi 1.1.7
             </div>
-            <strong>Copyright &copy; 2026 <a href="#" className="text-decoration-none">Baitulmall System</a>.</strong> All rights reserved.
+            <strong>Copyright &copy; 2026 <a href="#" className="text-decoration-none">Baitulmal System</a>.</strong> All rights reserved.
         </footer>
     );
 };

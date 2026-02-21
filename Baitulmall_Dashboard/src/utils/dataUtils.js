@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
  * @param {string} fileName - Name of the file to save
  * @param {string} sheetName - Name of the worksheet
  */
-export const exportToExcel = (data, fileName = 'Baitulmall_Report', sheetName = 'Data') => {
+export const exportToExcel = (data, fileName = 'Baitulmal_Report', sheetName = 'Data') => {
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);

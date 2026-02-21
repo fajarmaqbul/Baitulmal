@@ -65,54 +65,62 @@ const ConfirmDeleteModal = ({
 
                 <div style={{ textAlign: 'center' }}>
                     <div style={{
-                        width: '64px',
-                        height: '64px',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        borderRadius: '50%',
+                        width: '80px',
+                        height: '80px',
+                        background: 'rgba(231, 74, 59, 0.1)',
+                        borderRadius: '20px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 1.5rem',
-                        color: 'var(--danger)'
+                        color: '#e74a3b',
+                        transform: 'rotate(-5deg)'
                     }}>
-                        <AlertTriangle size={32} />
+                        <AlertTriangle size={40} strokeWidth={2.5} />
                     </div>
 
-                    <h2 style={{ marginBottom: '0.75rem', fontSize: '1.5rem' }}>{title}</h2>
-                    <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '2rem' }}>
+                    <h2 style={{
+                        marginBottom: '0.75rem',
+                        fontSize: '1.75rem',
+                        fontWeight: 800,
+                        color: 'var(--text-main)',
+                        letterSpacing: '-0.025em'
+                    }}>{title}</h2>
+
+                    <p style={{
+                        color: 'var(--text-muted)',
+                        lineHeight: '1.6',
+                        marginBottom: '2.5rem',
+                        fontSize: '1rem'
+                    }}>
                         {description}
                     </p>
 
-                    <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                         <button
-                            className="btn btn-ghost"
-                            style={{ flex: 1, padding: '0.75rem' }}
+                            className="btn btn-outline-danger"
+                            style={{ flex: 1 }}
                             onClick={onCancel}
                             disabled={loading}
                         >
-                            Batal
+                            BATAL
                         </button>
                         <button
-                            className="btn"
-                            style={{
-                                flex: 2,
-                                background: 'var(--danger)',
-                                color: 'white',
-                                padding: '0.75rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem'
-                            }}
+                            className="btn btn-primary"
+                            style={{ flex: 1.5 }}
                             onClick={onConfirm}
                             disabled={loading}
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 size={18} className="spin" />
-                                    Menghapus...
+                                    <Loader2 size={16} className="spin" />
+                                    <span>PENGHAPUSAN...</span>
                                 </>
-                            ) : 'Ya, Hapus Data'}
+                            ) : (
+                                <>
+                                    <span>HAPUS SEKARANG</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

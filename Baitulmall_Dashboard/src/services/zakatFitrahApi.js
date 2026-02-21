@@ -74,3 +74,18 @@ export const deleteZakatFitrahApi = async (id) => {
         throw error;
     }
 };
+
+
+/**
+ * Fetch Zakat Fitrah Financial Summary
+ * @param {string|number} tahun
+ */
+export const fetchZakatFitrahSummary = async (tahun) => {
+    try {
+        const response = await axios.get(`/zakat-fitrah/summary/${tahun}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching Zakat Fitrah summary:', error);
+        throw error;
+    }
+};

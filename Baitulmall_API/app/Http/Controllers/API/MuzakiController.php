@@ -24,6 +24,11 @@ class MuzakiController extends Controller
             $query->where('rt_id', $request->rt_id);
         }
 
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where('nama', 'like', "%{$search}%");
+        }
+
         // Default to latest
         $query->latest('updated_at');
 
@@ -31,7 +36,7 @@ class MuzakiController extends Controller
             return response()->json($query->get());
         }
 
-        return response()->json($query->paginate($request->get('per_page', 50)));
+        return response()->json($query->paginate($request->get('per_page', 20)));
     }
 
     /**

@@ -12,13 +12,43 @@ class SDMSeeder extends Seeder
     public function run()
     {
         // 1. Create Structures
-        $struktur = OrganizationStructure::firstOrCreate(
+        $baitulmall = OrganizationStructure::firstOrCreate(
             ['kode_struktur' => 'BAITULMALL_2023'],
             [
-                'nama_struktur' => 'Pengurus Inti Baitulmall',
+                'nama_struktur' => 'Pengurus Baitulmall',
                 'tipe' => 'Struktural',
                 'tanggal_mulai' => '2023-01-01',
                 'tanggal_selesai' => '2028-12-31',
+                'is_active' => true
+            ]
+        );
+
+        $takmir = OrganizationStructure::firstOrCreate(
+            ['kode_struktur' => 'TAKMIR_2023'],
+            [
+                'nama_struktur' => 'Pengurus Takmir Masjid',
+                'tipe' => 'Struktural',
+                'tanggal_mulai' => '2023-01-01',
+                'is_active' => true
+            ]
+        );
+
+        $rw = OrganizationStructure::firstOrCreate(
+            ['kode_struktur' => 'RW_01_2023'],
+            [
+                'nama_struktur' => 'Pengurus RW 01',
+                'tipe' => 'Struktural',
+                'tanggal_mulai' => '2023-01-01',
+                'is_active' => true
+            ]
+        );
+
+        $rt = OrganizationStructure::firstOrCreate(
+            ['kode_struktur' => 'RT_01_2023'],
+            [
+                'nama_struktur' => 'Pengurus RT 01',
+                'tipe' => 'Struktural',
+                'tanggal_mulai' => '2023-01-01',
                 'is_active' => true
             ]
         );
@@ -30,21 +60,32 @@ class SDMSeeder extends Seeder
                 'jabatan' => 'Ketua Umum',
                 'no_wa' => '081234567890',
                 'alamat' => 'Jl. Merpati No. 10',
-                'status' => 'Aktif'
+                'status' => 'Aktif',
+                'structure_id' => $baitulmall->id
             ],
             [
-                'nama' => 'Siti Aminah',
-                'jabatan' => 'Bendahara',
-                'no_wa' => '081345678901',
-                'alamat' => 'Jl. Anggrek No. 12',
-                'status' => 'Aktif'
+                'nama' => 'Drs. KH. Ahmad',
+                'jabatan' => 'Ketua Takmir',
+                'no_wa' => '08212345678',
+                'alamat' => 'Jl. Masjid Kandri',
+                'status' => 'Aktif',
+                'structure_id' => $takmir->id
             ],
             [
-                'nama' => 'Rina Wati',
-                'jabatan' => 'Sekretaris',
-                'no_wa' => '081900000000',
-                'alamat' => 'Jl. Mawar No. 3',
-                'status' => 'Aktif'
+                'nama' => 'Bp. Bambang',
+                'jabatan' => 'Ketua RW',
+                'no_wa' => '08567891234',
+                'alamat' => 'RW 01 Kandri',
+                'status' => 'Aktif',
+                'structure_id' => $rw->id
+            ],
+            [
+                'nama' => 'Bp. Joko',
+                'jabatan' => 'Ketua RT',
+                'no_wa' => '085789012345',
+                'alamat' => 'RT 01 Kandri',
+                'status' => 'Aktif',
+                'structure_id' => $rt->id
             ]
         ];
 
@@ -61,7 +102,7 @@ class SDMSeeder extends Seeder
             Assignment::updateOrCreate(
                 [
                     'person_id' => $person->id,
-                    'structure_id' => $struktur->id,
+                    'structure_id' => $m['structure_id'],
                     'jabatan' => $m['jabatan']
                 ],
                 [

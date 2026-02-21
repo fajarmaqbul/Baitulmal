@@ -9,8 +9,12 @@ import './index.css';
 import App from './App.jsx'
 
 
+import { RoleProvider } from './contexts/RoleContext';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <RoleProvider>
+      <App />
+    </RoleProvider>
   </StrictMode>,
 )

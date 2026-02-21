@@ -1,10 +1,4 @@
-import axios from 'axios';
-
-// Configure axios instance with base URL
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1',
-    headers: { 'Content-Type': 'application/json' }
-});
+import api from './authApi';
 
 // Base endpoints
 const ENDPOINTS = {
@@ -29,6 +23,10 @@ export const createPerson = async (data) => {
     return await api.post(ENDPOINTS.PEOPLE, data);
 };
 
+export const updatePerson = async (id, data) => {
+    return await api.put(`${ENDPOINTS.PEOPLE}/${id}`, data);
+};
+
 // 2. Structure Operations
 export const fetchStructures = async () => {
     const response = await api.get(ENDPOINTS.STRUCTURES);
@@ -44,6 +42,10 @@ export const fetchAssignments = async (structureId) => {
 
 export const createAssignment = async (data) => {
     return await api.post(ENDPOINTS.ASSIGNMENTS, data);
+};
+
+export const updateAssignment = async (id, data) => {
+    return await api.put(`${ENDPOINTS.ASSIGNMENTS}/${id}`, data);
 };
 
 export const deleteAssignment = async (id) => {
@@ -83,6 +85,29 @@ export const savePengurusBaru = async (formData, structureId) => {
         status: formData.status,
         keterangan: formData.job_desk
     });
+
+    return assignRes.data;
+};
+
+export const updatePengurus = async (assignmentId, formData) => {
+    // 1. Update Assignment Details
+    const assignRes = await updateAssignment(assignmentId, {
+        jabatan: formData.jabatan,
+        status: formData.status,
+        keterangan: formData.job_desk,
+        tanggal_mulai: formData.periode_mulai + '-01-01',
+        tanggal_selesai: formData.status === 'Non-Aktif' ? new Date().toISOString().split('T')[0] : null
+    });
+
+    // 2. Update Person if person_id is known
+    // Since we usually have assignment.person_id, we should update that too
+    if (formData.person_id) {
+        await updatePerson(formData.person_id, {
+            nama_lengkap: formData.nama,
+            no_wa: formData.no_wa,
+            alamat_domisili: formData.alamat
+        });
+    }
 
     return assignRes.data;
 };
