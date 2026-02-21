@@ -85,7 +85,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
+            'url' => env('SUPABASE_DB_URL', env('DB_URL')),
             'host' => env('SUPABASE_DB_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('SUPABASE_DB_PORT', env('DB_PORT', '5432')),
             'database' => env('SUPABASE_DB_DATABASE', env('DB_DATABASE', 'laravel')),
