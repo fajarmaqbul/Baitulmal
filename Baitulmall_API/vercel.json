@@ -1,12 +1,16 @@
-```json
 {
     "version": 2,
-    "name": "baitulmal-api",
     "functions": {
         "api/index.php": {
             "runtime": "vercel-php@0.7.1"
         }
     },
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "api/index.php"
+        }
+    ],
     "env": {
         "APP_ENV": "production",
         "APP_DEBUG": "false",
@@ -14,4 +18,3 @@
         "DB_CONNECTION": "pgsql"
     }
 }
-```
