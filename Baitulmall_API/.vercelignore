@@ -1,0 +1,22 @@
+tests
+node_modules
+database/*.sqlite*
+storage/framework/cache/*
+storage/logs/*
+public/build
+check_*.php
+debug_*.php
+fix_*.php
+verify_*.php
+list_*.php
+count_users.php
+seed_settings_temp.php
+new 4.txt
+.cursor
+.git
+.gitignore
+phpunit.xml
+vite.config.js
+package.json
+package-lock.json
+composer.lock
