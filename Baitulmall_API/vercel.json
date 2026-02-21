@@ -16,5 +16,6 @@
         "APP_DEBUG": "false",
         "LOG_CHANNEL": "stderr",
         "DB_CONNECTION": "pgsql"
-    }
+    },
+    "buildCommand": ""
 }
