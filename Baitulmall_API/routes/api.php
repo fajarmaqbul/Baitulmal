@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\Log;
 */
 
 Route::prefix('v1')->group(function () {
+    // Minimal test route
+    Route::get('test', function () {
+        return response()->json(['status' => 'ok', 'php_version' => PHP_VERSION]);
+    });
 
     // #region agent log
     // Debug-only ping endpoint to validate runtime logging wiring.
