@@ -9,6 +9,9 @@
         },
         "api/debug.php": {
             "runtime": "vercel-php@0.7.1"
+        },
+        "api/check.php": {
+            "runtime": "vercel-php@0.7.1"
         }
     },
     "routes": [
@@ -19,6 +22,10 @@
         {
             "src": "/debug",
             "dest": "api/debug.php"
+        },
+        {
+            "src": "/api-check",
+            "dest": "api/check.php"
         },
         {
             "src": "/(.*)",
