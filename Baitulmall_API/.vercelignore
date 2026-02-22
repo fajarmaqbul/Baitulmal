@@ -12,11 +12,18 @@ list_*.php
 count_users.php
 seed_settings_temp.php
 new 4.txt
+bootstrap/cache/*
 .cursor
 .git
 .gitignore
 phpunit.xml
 vite.config.js
 package.json
-package-lock.json
-composer.lock
+vendor
+.env.local
+.env.*.local
+storage/*.key
+storage/pail
+.vercel
+# composer.lock - REMOVED from ignore to ensure build consistency
+# package-lock.json - REMOVED from ignore to ensure build consistency
