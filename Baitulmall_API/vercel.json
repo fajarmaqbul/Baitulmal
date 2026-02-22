@@ -1,28 +1,28 @@
 {
     "version": 2,
     "functions": {
-        "vercel_index.php": {
+        "api/index.php": {
             "runtime": "vercel-php@0.7.1"
         },
-        "vercel_health.php": {
+        "api/health.php": {
             "runtime": "vercel-php@0.7.1"
         },
-        "debug.php": {
+        "api/debug.php": {
             "runtime": "vercel-php@0.7.1"
         }
     },
     "routes": [
         {
             "src": "/health",
-            "dest": "vercel_health.php"
+            "dest": "api/health.php"
         },
         {
             "src": "/debug",
-            "dest": "debug.php"
+            "dest": "api/debug.php"
         },
         {
             "src": "/(.*)",
-            "dest": "vercel_index.php"
+            "dest": "api/index.php"
         }
     ],
     "env": {

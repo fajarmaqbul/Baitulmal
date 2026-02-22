@@ -1,5 +1,11 @@
-tests
-node_modules
+# Avoid Vercel function auto-detection in subdirectories
+app/Http/Controllers/ApiBackend
+app/Http/Controllers/ApiControllers
+vendor/**/[Aa][Pp][Ii]/
+vendor/**/[Aa][Pp][Ii]
+# But ALLOW the root api directory
+!api/
+!api/*.php
 database/*.sqlite*
 storage/framework/cache/*
 storage/logs/*
