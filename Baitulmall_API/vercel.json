@@ -3,6 +3,9 @@
     "functions": {
         "api/index.php": {
             "runtime": "vercel-php@0.7.1"
+        },
+        "public/health.php": {
+            "runtime": "vercel-php@0.7.1"
         }
     },
     "routes": [
