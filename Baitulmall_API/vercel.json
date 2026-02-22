@@ -6,12 +6,19 @@
         },
         "api/health.php": {
             "runtime": "vercel-php@0.7.1"
+        },
+        "debug.php": {
+            "runtime": "vercel-php@0.7.1"
         }
     },
     "routes": [
         {
             "src": "/health",
             "dest": "api/health.php"
+        },
+        {
+            "src": "/debug",
+            "dest": "debug.php"
         },
         {
             "src": "/(.*)",
