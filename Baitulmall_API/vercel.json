@@ -4,14 +4,14 @@
         "api/index.php": {
             "runtime": "vercel-php@0.7.1"
         },
-        "public/health.php": {
+        "api/health.php": {
             "runtime": "vercel-php@0.7.1"
         }
     },
     "routes": [
         {
             "src": "/health",
-            "dest": "public/health.php"
+            "dest": "api/health.php"
         },
         {
             "src": "/(.*)",
