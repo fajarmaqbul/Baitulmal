@@ -26,10 +26,11 @@ phpunit.xml
 vite.config.js
 package.json
 vendor
+node_modules
+.vercel
 .env.local
 .env.*.local
 storage/*.key
 storage/pail
-.vercel
 # composer.lock - REMOVED from ignore to ensure build consistency
 # package-lock.json - REMOVED from ignore to ensure build consistency
