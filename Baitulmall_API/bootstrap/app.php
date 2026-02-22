@@ -24,7 +24,13 @@ $app = Application::configure(basePath: dirname(__DIR__))
 |--------------------------------------------------------------------------
 */
 if (isset($_SERVER['VERCEL_URL']) || env('APP_ENV') === 'production') {
-    $app->useStoragePath('/tmp/storage');
+    $storagePath = '/tmp/storage';
+    if (!is_dir($storagePath . '/framework/views')) {
+        @mkdir($storagePath . '/framework/sessions', 0777, true);
+        @mkdir($storagePath . '/framework/views', 0777, true);
+        @mkdir($storagePath . '/framework/cache', 0777, true);
+    }
+    $app->useStoragePath($storagePath);
 }
 
 return $app;
