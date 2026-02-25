@@ -14,11 +14,14 @@ class AsnafStatisticsService
      * @param int $tahun
      * @return array
      */
-    public function getCountByKategori(int $tahun): array
+    public function getCountByKategori(int $tahun, ?int $bulan = null): array
     {
-        $stats = Asnaf::where('tahun', $tahun)
-            ->where('status', 'active')
-            ->selectRaw('kategori, COUNT(*) as jumlah, SUM(jumlah_jiwa) as total_jiwa')
+        $query = Asnaf::where('tahun', $tahun)->where('status', 'active');
+        if ($bulan) {
+            $query->whereMonth('created_at', $bulan);
+        }
+
+        $stats = $query->selectRaw('kategori, COUNT(*) as jumlah, SUM(jumlah_jiwa) as total_jiwa')
             ->groupBy('kategori')
             ->get();
 
@@ -39,12 +42,17 @@ class AsnafStatisticsService
      * @param int $tahun
      * @return array
      */
-    public function getCountByRT(int $tahun): array
+    public function getCountByRT(int $tahun, ?int $bulan = null): array
     {
-        $stats = Asnaf::join('rts', 'asnaf.rt_id', '=', 'rts.id')
+        $query = Asnaf::join('rts', 'asnaf.rt_id', '=', 'rts.id')
             ->where('asnaf.tahun', $tahun)
-            ->where('asnaf.status', 'active')
-            ->selectRaw('rts.kode, COUNT(*) as jumlah, SUM(asnaf.jumlah_jiwa) as total_jiwa')
+            ->where('asnaf.status', 'active');
+            
+        if ($bulan) {
+            $query->whereMonth('asnaf.created_at', $bulan);
+        }
+
+        $stats = $query->selectRaw('rts.kode, COUNT(*) as jumlah, SUM(asnaf.jumlah_jiwa) as total_jiwa')
             ->groupBy('rts.kode')
             ->get();
 
@@ -104,12 +112,17 @@ class AsnafStatisticsService
      * @param int $tahun
      * @return array
      */
-    public function getCountByRTAndKategori(int $tahun): array
+    public function getCountByRTAndKategori(int $tahun, ?int $bulan = null): array
     {
-        $stats = Asnaf::join('rts', 'asnaf.rt_id', '=', 'rts.id')
+        $query = Asnaf::join('rts', 'asnaf.rt_id', '=', 'rts.id')
             ->where('asnaf.tahun', $tahun)
-            ->where('asnaf.status', 'active')
-            ->selectRaw('rts.kode as rt, asnaf.kategori, COUNT(*) as jumlah_kk, SUM(asnaf.jumlah_jiwa) as jumlah_jiwa')
+            ->where('asnaf.status', 'active');
+            
+        if ($bulan) {
+            $query->whereMonth('asnaf.created_at', $bulan);
+        }
+
+        $stats = $query->selectRaw('rts.kode as rt, asnaf.kategori, COUNT(*) as jumlah_kk, SUM(asnaf.jumlah_jiwa) as jumlah_jiwa')
             ->groupBy('rts.kode', 'asnaf.kategori')
             ->get();
 
@@ -136,19 +149,21 @@ class AsnafStatisticsService
      * @param int $tahun
      * @return array
      */
-    public function getOverallSummary(int $tahun): array
+    public function getOverallSummary(int $tahun, ?int $bulan = null): array
     {
-        $total = Asnaf::where('tahun', $tahun)
-            ->where('status', 'active')
-            ->selectRaw('COUNT(*) as total_kk, SUM(jumlah_jiwa) as total_jiwa')
-            ->first();
+        $query = Asnaf::where('tahun', $tahun)->where('status', 'active');
+        if ($bulan) {
+            $query->whereMonth('created_at', $bulan);
+        }
+        
+        $total = $query->selectRaw('COUNT(*) as total_kk, SUM(jumlah_jiwa) as total_jiwa')->first();
 
         return [
             'total_kk' => $total->total_kk ?? 0,
             'total_jiwa' => $total->total_jiwa ?? 0,
-            'by_kategori' => $this->getCountByKategori($tahun),
-            'by_rt' => $this->getCountByRT($tahun),
-            'by_rt_kategori' => $this->getCountByRTAndKategori($tahun),
+            'by_kategori' => $this->getCountByKategori($tahun, $bulan),
+            'by_rt' => $this->getCountByRT($tahun, $bulan),
+            'by_rt_kategori' => $this->getCountByRTAndKategori($tahun, $bulan),
         ];
     }
 
@@ -173,5 +188,103 @@ class AsnafStatisticsService
             ];
         })
         ->toArray();
+    }
+
+    /**
+     * Get Graduation Index (Social Mobility) comparing current year and previous year
+     *
+     * @param int $tahun Current year
+     * @return array
+     */
+    public function getGraduationIndex(int $tahun): array
+    {
+        $prevTahun = $tahun - 1;
+
+        $currentAsnaf = Asnaf::with('rt')->where('tahun', $tahun)->where('status', 'active')->get();
+        $prevAsnaf = Asnaf::with('rt')->where('tahun', $prevTahun)->where('status', 'active')->get();
+
+        $prevMap = [];
+        foreach ($prevAsnaf as $asnaf) {
+            // Uniquely identify by RT and standardized name
+            $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
+            $prevMap[$key] = $asnaf;
+        }
+
+        $currentMap = [];
+        foreach ($currentAsnaf as $asnaf) {
+            $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
+            $currentMap[$key] = $asnaf;
+        }
+
+        $graduated = [];
+        $improved = [];
+        $declined = [];
+        $stagnant = [];
+
+        // Check for Asnaf from previous year
+        foreach ($prevMap as $key => $prev) {
+            if (!isset($currentMap[$key])) {
+                // If they were Fakir/Miskin but are no longer registered, consider them Graduated
+                if (in_array($prev->kategori, ['Fakir', 'Miskin'])) {
+                    $graduated[] = [
+                        'nama' => $prev->nama,
+                        'rt' => $prev->rt->kode,
+                        'alasan' => 'Tidak lagi terdaftar sebagai Mustahik (Mandiri)',
+                        'prev_kategori' => $prev->kategori,
+                        'prev_score' => $prev->score,
+                        'current_kategori' => '-',
+                        'current_score' => null,
+                        'delta_score' => null
+                    ];
+                }
+            } else {
+                $curr = $currentMap[$key];
+                $deltaScore = ($curr->score ?? 0) - ($prev->score ?? 0);
+                $isPoorBefore = in_array($prev->kategori, ['Fakir', 'Miskin']);
+                $isPoorNow = in_array($curr->kategori, ['Fakir', 'Miskin']);
+
+                $baseData = [
+                    'id' => $curr->id,
+                    'nama' => $curr->nama,
+                    'rt' => $curr->rt->kode,
+                    'prev_kategori' => $prev->kategori,
+                    'prev_score' => $prev->score,
+                    'current_kategori' => $curr->kategori,
+                    'current_score' => $curr->score,
+                    'delta_score' => $deltaScore
+                ];
+
+                if ($isPoorBefore && !$isPoorNow && in_array($curr->kategori, ['Mualaf', 'Ibnu Sabil', 'Fisabilillah', 'Amil', 'Gharim'])) {
+                    $baseData['alasan'] = 'Pindah ke kategori ' . $curr->kategori;
+                    $graduated[] = $baseData;
+                } elseif ($deltaScore > 0) {
+                    $improved[] = $baseData;
+                } elseif ($deltaScore < 0) {
+                    $declined[] = $baseData;
+                } else {
+                    $stagnant[] = $baseData;
+                }
+            }
+        }
+
+        // We can ignore brand NEW asnaf (in currentMap but not in prevMap) for social mobility tracking of existing ones,
+        // or we could classify them as "New Intake". For now, focus on mobility of previous cohort.
+
+        return [
+            'tahun' => $tahun,
+            'summary' => [
+                'total_evaluated' => count($prevMap),
+                'graduated' => count($graduated),
+                'improved' => count($improved),
+                'declined' => count($declined),
+                'stagnant' => count($stagnant)
+            ],
+            'details' => [
+                'graduated' => $graduated,
+                'improved' => $improved,
+                'declined' => $declined,
+                'stagnant' => $stagnant
+            ]
+        ];
     }
 }

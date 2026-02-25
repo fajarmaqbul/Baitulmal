@@ -11,6 +11,8 @@ use App\Http\Controllers\ApiControllers\EventController;
 use App\Http\Controllers\ApiControllers\AgendaController;
 use App\Http\Controllers\ApiControllers\AgendaPostController;
 use App\Http\Controllers\ApiControllers\AuthController;
+use App\Http\Controllers\ApiControllers\RoleController;
+use App\Http\Controllers\ApiControllers\MustahikStatsController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 
@@ -30,40 +32,7 @@ Route::prefix('v1')->group(function () {
         return response()->json(['status' => 'ok', 'php_version' => PHP_VERSION]);
     });
 
-    // #region agent log
-    Route::get('__debug/ping', function () {
-        try {
-            $workspaceRoot = \dirname(\base_path());
-            $logDir = $workspaceRoot . DIRECTORY_SEPARATOR . '.cursor';
-            if (!\is_dir($logDir)) {
-                @\mkdir($logDir, 0777, true);
-            }
-            $logFile = $logDir . DIRECTORY_SEPARATOR . 'debug.log';
-
-            $payload = [
-                'sessionId' => 'debug-session',
-                'runId' => 'auth-run-1',
-                'hypothesisId' => 'PING',
-                'location' => 'routes/api.php:__debug/ping',
-                'message' => 'Debug ping hit',
-                'data' => [
-                    'app_env' => \config('app.env'),
-                    'base_path' => \base_path(),
-                    'workspace_root' => $workspaceRoot,
-                ],
-                'timestamp' => round(microtime(true) * 1000),
-            ];
-
-            @\file_put_contents($logFile, \json_encode($payload) . PHP_EOL, FILE_APPEND);
-            Log::info('agent_debug', $payload);
-
-            return response()->json(['ok' => true]);
-        } catch (\Throwable $e) {
-            Log::error('agent_debug_ping_failed', ['message' => $e->getMessage()]);
-            return response()->json(['ok' => false], 500);
-        }
-    });
-    // #endregion
+    // Protected API Routes
     
     // ========== Authentication ==========
     Route::post('register', [AuthController::class, 'register']);
@@ -75,38 +44,70 @@ Route::prefix('v1')->group(function () {
         
         // User Management
         Route::apiResource('users', \App\Http\Controllers\ApiControllers\UserController::class);
+        Route::put('users/{id}/role', [\App\Http\Controllers\ApiControllers\UserController::class, 'updateRole']);
+        
+        // Role Management
+        Route::get('roles', [RoleController::class, 'index']);
+        Route::post('roles', [RoleController::class, 'store']);
+        Route::put('roles/{id}', [RoleController::class, 'update']);
+        Route::delete('roles/{id}', [RoleController::class, 'destroy']);
         
         // Product Management
         Route::post('products', [\App\Http\Controllers\ApiControllers\ProductController::class, 'store']);
         Route::post('products/{id}', [\App\Http\Controllers\ApiControllers\ProductController::class, 'update']); 
         Route::put('products/{id}', [\App\Http\Controllers\ApiControllers\ProductController::class, 'update']);
         Route::delete('products/{id}', [\App\Http\Controllers\ApiControllers\ProductController::class, 'destroy']);
+
+        // ========== RTs (Neighborhood Units) ==========
+        Route::post('rts', [RTController::class, 'store']);
+        Route::put('rts/{id}', [RTController::class, 'update']);
+        Route::delete('rts/{id}', [RTController::class, 'destroy']);
+
+        // ========== Asnaf (Zakat Recipients) ==========
+        Route::post('asnaf/recalculate', [AsnafController::class, 'recalculateScores']);
+        Route::post('asnaf', [AsnafController::class, 'store']);
+        Route::put('asnaf/{id}', [AsnafController::class, 'update']);
+        Route::delete('asnaf/{id}', [AsnafController::class, 'destroy']);
+
+        // ========== Muzaki (Zakat Payers) ==========
+        Route::apiResource('muzaki', MuzakiController::class)->only(['store', 'update', 'destroy']);
+
+        // ========== Distribusi (Distribution) ==========
+        Route::post('distribusi', [DistribusiController::class, 'store']);
+        Route::put('distribusi/{id}', [DistribusiController::class, 'update']);
+        Route::delete('distribusi/{id}', [DistribusiController::class, 'destroy']);
+        Route::post('distribusi/{id}/mark-distributed', [DistribusiController::class, 'markAsDistributed']);
+        Route::post('distribusi/{id}/mark-verified', [DistribusiController::class, 'markAsVerified']);
     });
     
     // ========== Notifications ==========
     Route::get('notifications', [\App\Http\Controllers\ApiControllers\NotificationController::class, 'index']);
 
-    // ========== RTs (Neighborhood Units) ==========
+    // ========== RTs (Neighborhood Units) - Public Read ==========
     Route::get('rts', [RTController::class, 'index']);
     Route::get('rts/{id}', [RTController::class, 'show']);
-    Route::post('rts', [RTController::class, 'store']);
-    Route::put('rts/{id}', [RTController::class, 'update']);
-    Route::delete('rts/{id}', [RTController::class, 'destroy']);
     Route::get('rts/{id}/asnaf', [RTController::class, 'getAsnaf']);
 
-    // ========== Asnaf (Zakat Recipients) ==========
-    Route::post('asnaf/recalculate', [AsnafController::class, 'recalculateScores']);
+    // ========== Asnaf (Zakat Recipients) - Public Read ==========
     Route::get('asnaf', [AsnafController::class, 'index']);
     Route::get('asnaf/statistics', [AsnafController::class, 'statistics']); 
+    Route::get('asnaf/graduation-index', [AsnafController::class, 'graduationIndex']);
     Route::get('asnaf/map', [AsnafController::class, 'mapData']); 
-    Route::get('asnaf/{id}', [AsnafController::class, 'show']);
-    Route::post('asnaf', [AsnafController::class, 'store']);
-    Route::put('asnaf/{id}', [AsnafController::class, 'update']);
-    Route::delete('asnaf/{id}', [AsnafController::class, 'destroy']);
+    
+    // Asnaf Analytics
+    Route::prefix('asnaf/analytics')->group(function () {
+        Route::get('/anomalies', [\App\Http\Controllers\Api\V1\AsnafAnalyticsController::class, 'getFraudDetection']);
+        Route::get('/heatmap', [\App\Http\Controllers\Api\V1\AsnafAnalyticsController::class, 'getRtHeatmap']);
+        Route::get('/had-kifayah', [\App\Http\Controllers\Api\V1\AsnafAnalyticsController::class, 'getHadKifayahAnalysis']);
+        Route::get('/productive-candidates', [\App\Http\Controllers\Api\V1\AsnafAnalyticsController::class, 'getProductiveZakatCandidates']);
+    });
 
-    // ========== Muzaki (Zakat Payers) ==========
+    Route::get('asnaf/{id}', [AsnafController::class, 'show']);
+
+    // ========== Muzaki (Zakat Payers) - Public Read ==========
+    Route::get('muzaki', [MuzakiController::class, 'index']);
     Route::get('muzaki/stats', [MuzakiController::class, 'stats']);
-    Route::apiResource('muzaki', MuzakiController::class);
+    Route::get('muzaki/{id}', [MuzakiController::class, 'show']);
 
     // ========== Zakat Fitrah Transactions ==========
     Route::get('zakat-fitrah', [ZakatFitrahController::class, 'index']);
@@ -122,16 +123,9 @@ Route::prefix('v1')->group(function () {
     Route::get('zakat-fitrah/summary/{tahun}', [ZakatFitrahController::class, 'summary']);
     Route::get('zakat-fitrah/by-rt/{tahun}', [ZakatFitrahController::class, 'byRT']);
 
-    // ========== Distribusi (Distribution) ==========
+    // ========== Distribusi (Distribution) - Public Read ==========
     Route::get('distribusi', [DistribusiController::class, 'index']);
-    Route::post('distribusi', [DistribusiController::class, 'store']);
     Route::get('distribusi/{id}', [DistribusiController::class, 'show']);
-    Route::put('distribusi/{id}', [DistribusiController::class, 'update']);
-    Route::delete('distribusi/{id}', [DistribusiController::class, 'destroy']);
-    
-    // Workflow endpoints
-    Route::post('distribusi/{id}/mark-distributed', [DistribusiController::class, 'markAsDistributed']);
-    Route::post('distribusi/{id}/mark-verified', [DistribusiController::class, 'markAsVerified']);
     Route::get('distribusi/summary/{tahun}', [DistribusiController::class, 'summary']);
     Route::get('distribusi/recommendations/{tahun}', [DistribusiController::class, 'recommendations']);
 
@@ -228,5 +222,12 @@ Route::prefix('v1')->group(function () {
     Route::post('death-events', [\App\Http\Controllers\ApiControllers\DeathEventController::class, 'store']);
 
     // ========== AI Features ==========
-    Route::post('ai/generate-description', [\App\Http\Controllers\ApiControllers\AIController::class, 'generateDescription']);
+    Route::get('stats/mustahik', [MustahikStatsController::class, 'index']);
+    Route::post('ai/generate-description', [\App\Http\Controllers\ApiControllers\SmartAssistantController::class, 'generateDescription']);
+
+    // ========== Public Transparency ==========
+    Route::get('public/statistics', [\App\Http\Controllers\ApiControllers\PublicController::class, 'statistics']);
+    Route::get('public/live-stats', [\App\Http\Controllers\ApiControllers\PublicController::class, 'liveStats']);
+    Route::get('public/stories', [\App\Http\Controllers\ApiControllers\PublicController::class, 'stories']);
+    Route::get('public/receipt/{type}/{id}', [\App\Http\Controllers\ApiControllers\PublicController::class, 'downloadReceipt']);
 });

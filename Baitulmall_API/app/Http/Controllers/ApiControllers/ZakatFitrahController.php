@@ -6,22 +6,32 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Muzaki;
+use App\Services\WhatsAppService;
+use App\Services\ReceiptService;
 
 class ZakatFitrahController extends Controller
 {
+    protected $whatsAppService;
+    protected $receiptService;
+
+    public function __construct(WhatsAppService $whatsAppService, ReceiptService $receiptService)
+    {
+        $this->whatsAppService = $whatsAppService;
+        $this->receiptService = $receiptService;
+    }
     public function summary(Request $request, $routeTahun = null)
     {
         $tahun = $routeTahun ?? $request->get('tahun', date('Y'));
+        $bulan = $request->get('bulan');
         
-        // Zakat Fitrah Collection (Penerimaan)
-        // Sum 'jumlah_beras_kg' from Muzaki table
-        // Note: Assuming 'jumlah_uang' exists? 
-        // Checking Muzaki model next, but for now summing beras.
         $query = Muzaki::where('tahun', $tahun);
+        if ($bulan) {
+            $query->whereMonth('tanggal_bayar', $bulan);
+        }
         
         $totalBeras = (clone $query)->sum('jumlah_beras_kg');
         $totalJiwa = (clone $query)->sum('jumlah_jiwa');
-        $totalUang = (clone $query)->sum('jumlah_uang'); // Assuming column exists, handled by try/catch or schema check
+        $totalUang = (clone $query)->sum('jumlah_uang'); 
 
         // Penyaluran Zakat Fitrah? Ref: distribution table or generic Distribution?
         // Usually Zakat Fitrah is fully distributed.
@@ -43,12 +53,20 @@ class ZakatFitrahController extends Controller
     public function stats(Request $request)
     {
         $tahun = $request->get('tahun', date('Y'));
+        $bulan = $request->get('bulan');
         
+        $cacheKey = $bulan ? "zakat_fitrah_stats_{$tahun}_{$bulan}" : "zakat_fitrah_stats_{$tahun}";
+
         // Cache stats for 10 minutes
-        $stats = Cache::remember("zakat_fitrah_stats_{$tahun}", 600, function () use ($tahun) {
-            $totalJiwa = Muzaki::where('tahun', $tahun)->sum('jumlah_jiwa');
-            $totalBeras = Muzaki::where('tahun', $tahun)->sum('jumlah_beras_kg');
-            $totalUang = Muzaki::where('tahun', $tahun)->sum('jumlah_uang'); // Corrected from total_liat_uang
+        $stats = Cache::remember($cacheKey, 600, function () use ($tahun, $bulan) {
+            $query = Muzaki::where('tahun', $tahun);
+            if ($bulan) {
+                $query->whereMonth('tanggal_bayar', $bulan);
+            }
+
+            $totalJiwa = (clone $query)->sum('jumlah_jiwa');
+            $totalBeras = (clone $query)->sum('jumlah_beras_kg');
+            $totalUang = (clone $query)->sum('jumlah_uang');
 
             return [
                 'total_jiwa' => $totalJiwa,
@@ -71,11 +89,32 @@ class ZakatFitrahController extends Controller
             'jumlah_jiwa' => 'required|integer',
             'jumlah_beras_kg' => 'required|numeric',
             'jumlah_uang' => 'nullable|numeric',
+            'no_hp' => 'nullable|string',
             'status_bayar' => 'required|string',
             'tahun' => 'required|string'
         ]);
 
         $zakat = Muzaki::create($validated); // Assuming Muzaki model is used for ZakatFitrah data
+        
+        // Generate Receipt PDF
+        $receiptPath = $this->receiptService->generateReceipt('fitrah', $zakat);
+        $receiptUrl = $this->receiptService->getReceiptUrl($receiptPath);
+
+        // Update with receipt path
+        $zakat->update(['receipt_path' => $receiptPath]);
+
+        // Send WhatsApp Notification
+        if ($zakat->no_hp) {
+            $message = "Terima kasih Bpk/Ibu *" . ($zakat->nama) . "*\n\n";
+            $message .= "Kami telah menerima pembayaran *Zakat Fitrah* Anda untuk " . $zakat->jumlah_jiwa . " jiwa.\n";
+            if ($zakat->jumlah_uang > 0) $message .= "Nominal: *Rp " . number_format($zakat->jumlah_uang, 0, ',', '.') . "*\n";
+            if ($zakat->jumlah_beras_kg > 0) $message .= "Beras: *" . number_format($zakat->jumlah_beras_kg, 1, ',', '.') . " Kg*\n";
+            $message .= "\nSemoga Allah mensucikan jiwa dan harta Anda. Aamiin.\n\n";
+            $message .= "📄 *Download Kwitansi Digital:* \n" . $receiptUrl . "\n\n";
+            $message .= "_Baitulmal Masjid_";
+
+            $this->whatsAppService->send($zakat->no_hp, $message);
+        }
         
         // Clear cache
         Cache::forget("zakat_fitrah_stats_{$validated['tahun']}");

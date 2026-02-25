@@ -14,6 +14,7 @@ class Person extends Model
 
     protected $fillable = [
         'user_id',
+        'rt_id',
         'nik',
         'nama_lengkap',
         'panggilan',
@@ -27,6 +28,11 @@ class Person extends Model
         'foto_url',
         'status_hidup'
     ];
+
+    public function rt()
+    {
+        return $this->belongsTo(RT::class, 'rt_id');
+    }
 
     public function assignments()
     {

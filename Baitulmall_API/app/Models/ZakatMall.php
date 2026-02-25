@@ -16,9 +16,11 @@ class ZakatMall extends Model
     protected $fillable = [
         'rt_id',
         'nama_muzaki',
+        'no_hp',
         'kategori',
         'jumlah',
         'keterangan',
+        'receipt_path',
         'tanggal'
     ];
 

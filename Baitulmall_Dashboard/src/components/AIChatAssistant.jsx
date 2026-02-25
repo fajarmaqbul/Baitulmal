@@ -6,7 +6,7 @@ const AIChatAssistant = ({ isOpen, onClose }) => {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: 'Assalamu\'alaikum! Saya Asisten AI Baitulmall. Ada yang bisa saya bantu? Cek "Siapa belum bayar zakat" atau coba "Buatkan undangan rapat".'
+            content: 'Assalamu\'alaikum! Saya Asisten AI Baitulmal. Ada yang bisa saya bantu? Cek "Siapa belum bayar zakat" atau coba "Buatkan undangan rapat".'
         }
     ]);
     const [input, setInput] = useState('');
@@ -72,7 +72,7 @@ const AIChatAssistant = ({ isOpen, onClose }) => {
                         <Bot size={20} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-sm">Asisten Baitulmall</h3>
+                        <h3 className="font-bold text-sm">Asisten Baitulmal</h3>
                         <p className="text-xs opacity-90">Online • Smart Logic</p>
                     </div>
                 </div>
@@ -96,7 +96,7 @@ const AIChatAssistant = ({ isOpen, onClose }) => {
                                         <div className="absolute inset-0 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none"></div>
                                         {msg.data.substring(0, 100)}...
                                     </div>
-                                    <button className="mt-2 text-xs bg-primary text-white px-3 py-1 rounded w-full hover:bg-primary-hover transition-colors">
+                                    <button className="mt-2 text-xs bg-[var(--primary)] text-white px-3 py-1 rounded w-full hover:bg-[var(--primary-hover)] transition-colors">
                                         Download / View
                                     </button>
                                 </div>
@@ -148,7 +148,7 @@ const AIChatAssistant = ({ isOpen, onClose }) => {
                     <button
                         onClick={handleSend}
                         disabled={!input.trim() || loading}
-                        className="absolute right-2 top-2 p-1.5 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="absolute right-2 top-2 p-1.5 bg-[var(--primary)] text-white rounded-lg hover:bg-[var(--primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         <Send size={16} />
                     </button>

@@ -29,12 +29,20 @@ import {
     Wallet,
     MapPin,
     Briefcase,
-    Shield
+    Shield,
+    Trophy,
+    TrendingUp, // Added for Graduation tab icon
+    Activity, // Added for Analytics tab icon
+    UserPlus, // Added by user instruction
+    RefreshCw // Added by user instruction
 } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../utils/dataUtils';
 import PrintLayout from '../components/PrintLayout';
 import { usePagePrint } from '../hooks/usePagePrint';
 import { useSignatureRule } from '../hooks/useSignatureRule';
+import useRealtimeStats from '../hooks/useRealtimeStats';
+import GraduationTab from '../components/Asnaf/GraduationTab';
+import AsnafAnalyticsTab from '../components/Asnaf/AsnafAnalyticsTab';
 
 const AsnafPrint = ({ data, rt, kategori, isSpecialCategoryMode, signers }) => (
     <PrintLayout
@@ -90,26 +98,29 @@ const AsnafManagement = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [usingFallback, setUsingFallback] = useState(false);
+
+    // Tab State
+    const [activeTab, setActiveTab] = useState('master'); // 'master', 'graduation', or 'analytics'
+
+    // Form & Filter States
+    const [selectedRt, setSelectedRt] = React.useState('01');
+    const [selectedKategori, setSelectedKategori] = useState('Semua');
+    const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear().toString());
+    const [searchTerm, setSearchTerm] = useState('');
     const [settingsList, setSettingsList] = useState([]);
+    const [deleteModal, setDeleteModal] = useState({ open: false, id: null, loading: false });
+    const [strukturInti, setStrukturInti] = useState([]);
 
     const getSetting = (key, fallback) => {
         const s = settingsList.find(item => item.key_name === key);
         return s ? s.value : fallback;
     };
 
-
-
-    // Modal Delete State
-    const [deleteModal, setDeleteModal] = useState({ open: false, id: null, loading: false });
-
-    // Missing local state placeholders
-    const [strukturInti, setStrukturInti] = useState([]);
-
-    // Form & Filter States
-    const [selectedRt, setSelectedRt] = React.useState('01');
-    const [selectedKategori, setSelectedKategori] = useState('Semua');
-    // const [selectedTahun, setSelectedTahun] = useState('2026'); // DEPRECATED: show all years
-    const [searchTerm, setSearchTerm] = useState('');
+    // Real-time Statistics Hook
+    const { stats: rtStats, loading: rtLoading } = useRealtimeStats(selectedTahun, {
+        pollingInterval: 5000,
+        enablePolling: true
+    });
     const [showModal, setShowModal] = useState(false);
     const [showDeathModal, setShowDeathModal] = useState(false);
     const [selectedDeathAsnaf, setSelectedDeathAsnaf] = useState(null);
@@ -199,21 +210,23 @@ const AsnafManagement = () => {
     const kategoris = ['Fakir', 'Miskin', 'Amil', 'Mualaf', 'Riqab', 'Gharim', 'Fisabilillah', 'Ibnu Sabil'];
     const tahunList = ['2024', '2025', '2026'];
 
-    // Modified filteredData to handle special category mode - removed year filter
+    // Modified filteredData to handle special category mode and year filter
     const filteredData = isSpecialCategoryMode
         ? asnafData.filter(a =>
             a.kategori === selectedRt &&
+            a.tahun.toString() === selectedTahun &&
             (searchTerm === '' || a.nama.toLowerCase().includes(searchTerm.toLowerCase()))
         ).sort((a, b) => a.rt.localeCompare(b.rt))
         : asnafData.filter(a =>
             a.rt === selectedRt &&
+            a.tahun.toString() === selectedTahun &&
             (selectedKategori === 'Semua' || a.kategori === selectedKategori) &&
             (searchTerm === '' || a.nama.toLowerCase().includes(searchTerm.toLowerCase()))
         );
 
-    // Stats for selected RT - removed year filter
+    // Stats for selected RT filtered by year
     const stats = kategoris.map(kat => {
-        const data = asnafData.filter(a => a.rt === selectedRt && a.kategori === kat);
+        const data = asnafData.filter(a => a.rt === selectedRt && a.kategori === kat && a.tahun.toString() === selectedTahun);
         const totalJiwa = data.reduce((acc, curr) => acc + curr.jumlahJiwa, 0);
         return { kategori: kat, count: data.length, totalJiwa };
     });
@@ -444,317 +457,379 @@ const AsnafManagement = () => {
                     </div>
                 </div>
 
-                {usingFallback && (
-                    <div className="glass-card" style={{ padding: '0.75rem 1.5rem', background: 'rgba(245, 158, 11, 0.1)', borderLeft: '4px solid #f59e0b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <AlertIcon size={20} style={{ color: '#f59e0b' }} />
-                        <span style={{ fontSize: '0.9rem', color: '#f59e0b', fontWeight: 600 }}>Mode Fallback: Data diambil dari penyimpanan lokal (API Offline)</span>
-                    </div>
-                )}
-
-                {/* Top Stats Overview */}
-                <div className="stats-grid" style={{ gap: '1.5rem', marginBottom: '2.5rem' }}>
-                    <div className="card stat-hover" style={{ gridColumn: 'span 2', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderLeft: '6px solid var(--primary)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ padding: '0.75rem', borderRadius: '14px', background: 'rgba(0,144,231,0.08)', color: 'var(--primary)' }}>
-                                <Users size={24} strokeWidth={2.5} />
-                            </div>
-                            <div style={{ background: 'rgba(0,210,91,0.08)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 800, color: 'var(--success)' }}>
-                                {asnafData.length} KEPALA KELUARGA
-                            </div>
-                        </div>
-                        <div>
-                            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', lineHeight: 1 }}>{asnafData.reduce((acc, curr) => acc + curr.jumlahJiwa, 0)}</h2>
-                            <p style={{ margin: '0.75rem 0 0', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.9rem' }}>Total Jiwa Mustahik</p>
-                        </div>
-                    </div>
-
-                    <div className="card stat-hover" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderLeft: '6px solid var(--danger)' }}>
-                        <div style={{ alignSelf: 'flex-start', padding: '0.75rem', borderRadius: '14px', background: 'rgba(252,66,74,0.08)', color: 'var(--danger)' }}>
-                            <AlertIcon size={24} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, lineHeight: 1 }}>
-                                {asnafData.filter(a => ['Fakir', 'Miskin'].includes(a.kategori)).reduce((acc, curr) => acc + curr.jumlahJiwa, 0)}
-                            </h3>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.75rem 0 0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jiwa Prioritas (F & M)</p>
-                        </div>
-                    </div>
-
-                    <div className="card stat-hover" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderLeft: '6px solid var(--info)' }}>
-                        <div style={{ alignSelf: 'flex-start', padding: '0.75rem', borderRadius: '14px', background: 'rgba(143, 95, 232, 0.08)', color: 'var(--info)' }}>
-                            <Briefcase size={24} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, lineHeight: 1 }}>
-                                {asnafData.filter(a => a.kategori === 'Amil').length}
-                            </h3>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.75rem 0 0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amil Terdaftar</p>
-                        </div>
-                    </div>
+                {/* Tab Navigation */}
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                    <button
+                        className={`btn ${activeTab === 'master' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => setActiveTab('master')}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        <Users size={16} /> Master Data Asnaf
+                    </button>
+                    {!isSpecialCategoryMode && (
+                        <>
+                            <button
+                                className={`btn ${activeTab === 'graduation' ? 'btn-primary' : 'btn-ghost'}`}
+                                onClick={() => setActiveTab('graduation')}
+                                style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <TrendingUp size={16} /> Indeks Graduasi (Social Mobility)
+                            </button>
+                            <button
+                                className={`btn ${activeTab === 'analytics' ? 'btn-primary' : 'btn-ghost'}`}
+                                onClick={() => setActiveTab('analytics')}
+                                style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Activity size={16} /> Asnaf Analytics & Fraud
+                            </button>
+                        </>
+                    )}
                 </div>
 
-                <div className="main-grid" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem', alignItems: 'start' }}>
-                    {/* Sticky Sidebar */}
-                    <div className="sidebar" style={{ position: 'sticky', top: '1.5rem' }}>
-                        <div className="glass-card" style={{ padding: '1.25rem', border: '1px solid var(--border-color)' }}>
-                            <h4 style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-                                <Filter size={18} className="text-primary" /> Filter Lokasi
-                            </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {rtRw.map(rt => (
-                                    <button
-                                        key={rt.kode}
-                                        onClick={() => setSelectedRt(rt.kode)}
-                                        className={`btn ${selectedRt === rt.kode ? 'btn-primary' : 'btn-ghost'}`}
-                                        style={{
-                                            textAlign: 'left',
-                                            justifyContent: 'space-between',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            fontWeight: selectedRt === rt.kode ? 700 : 400
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div className="dot" style={{ background: selectedRt === rt.kode ? '#fff' : 'var(--text-muted)' }}></div>
-                                            RT {rt.kode}
-                                        </div>
-                                        {selectedRt === rt.kode && <ChevronRight size={16} />}
-                                    </button>
-                                ))}
-                                <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0' }}></div>
-                                {specialCategories.map(cat => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setSelectedRt(cat)}
-                                        className={`btn ${selectedRt === cat ? 'btn-primary' : 'btn-ghost'}`}
-                                        style={{
-                                            textAlign: 'left',
-                                            justifyContent: 'space-between',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            fontWeight: selectedRt === cat ? 700 : 400
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div className="dot" style={{ background: selectedRt === cat ? '#fff' : 'var(--text-muted)' }}></div>
-                                            {cat}
-                                        </div>
-                                        {selectedRt === cat && <ChevronRight size={16} />}
-                                    </button>
-                                ))}
+                {activeTab === 'graduation' ? (
+                    <GraduationTab data={asnafData} rtRw={rtRw} />
+                ) : activeTab === 'analytics' ? (
+                    <AsnafAnalyticsTab />
+                ) : (
+                    <>
+                        {usingFallback && (
+                            <div className="glass-card" style={{ padding: '0.75rem 1.5rem', background: 'rgba(245, 158, 11, 0.1)', borderLeft: '4px solid #f59e0b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <AlertIcon size={20} style={{ color: '#f59e0b' }} />
+                                <span style={{ fontSize: '0.9rem', color: '#f59e0b', fontWeight: 600 }}>Mode Fallback: Data diambil dari penyimpanan lokal (API Offline)</span>
+                            </div>
+                        )}
+
+                        {/* Top Stats Overview */}
+                        <div className="stats-grid" style={{ gap: '1.5rem', marginBottom: '2.5rem' }}>
+                            <div className="card stat-hover" style={{ gridColumn: 'span 2', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderLeft: '6px solid var(--primary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ padding: '0.75rem', borderRadius: '14px', background: 'rgba(0,144,231,0.08)', color: 'var(--primary)' }}>
+                                        <Users size={24} strokeWidth={2.5} />
+                                    </div>
+                                    <div style={{ background: 'rgba(0,210,91,0.08)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 800, color: 'var(--success)' }}>
+                                        {rtStats?.total_kk ?? asnafData.length} KEPALA KELUARGA
+                                    </div>
+                                </div>
+                                <div>
+                                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', lineHeight: 1 }}>
+                                        {rtStats?.total_jiwa ?? asnafData.reduce((acc, curr) => acc + curr.jumlahJiwa, 0)}
+                                    </h2>
+                                    <p style={{ margin: '0.75rem 0 0', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.9rem' }}>
+                                        Total Jiwa Mustahik {rtLoading && <span style={{ opacity: 0.5 }}>...</span>}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="card stat-hover" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderLeft: '6px solid var(--danger)' }}>
+                                <div style={{ alignSelf: 'flex-start', padding: '0.75rem', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--warning-main)' }}>
+                                    <AlertIcon size={24} strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, lineHeight: 1 }}>
+                                        {rtStats?.fakir?.jiwa !== undefined ? (rtStats.fakir.jiwa + rtStats.miskin.jiwa) : asnafData.filter(a => ['Fakir', 'Miskin'].includes(a.kategori) && a.tahun.toString() === selectedTahun).reduce((acc, curr) => acc + curr.jumlahJiwa, 0)}
+                                    </h3>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.75rem 0 0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jiwa Prioritas (F & M)</p>
+                                </div>
+                            </div>
+
+                            <div className="card stat-hover" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderLeft: '6px solid var(--info)' }}>
+                                <div style={{ alignSelf: 'flex-start', padding: '0.75rem', borderRadius: '14px', background: 'rgba(143, 95, 232, 0.08)', color: 'var(--info)' }}>
+                                    <Briefcase size={24} strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, lineHeight: 1 }}>
+                                        {rtStats?.amil?.kk ?? asnafData.filter(a => a.kategori === 'Amil' && a.tahun.toString() === selectedTahun).length}
+                                    </h3>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0.75rem 0 0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amil Terdaftar</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="content-area">
-                        {/* Search & Filter Bar - Single Row Horizontal */}
-                        <div className="glass-card" style={{
-                            padding: '0.75rem 1.25rem',
-                            marginBottom: '1.5rem',
-                            display: 'flex',
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: '1rem',
-                            border: '1px solid var(--border-color)',
-                            flexWrap: 'nowrap'
-                        }}>
-                            {/* Search Input Container */}
-                            <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-                                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input
-                                    type="text"
-                                    className="input"
-                                    placeholder="Cari nama kepala keluarga..."
-                                    style={{
-                                        paddingLeft: '40px',
-                                        height: '42px',
-                                        fontSize: '0.875rem'
-                                    }}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                        <div className="main-grid" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem', alignItems: 'start' }}>
+                            {/* Sticky Sidebar */}
+                            <div className="sidebar" style={{ position: 'sticky', top: '1.5rem' }}>
+                                <div className="glass-card" style={{ padding: '1.25rem', border: '1px solid var(--border-color)' }}>
+                                    <h4 style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                                        <Filter size={18} className="text-primary" /> Filter Lokasi
+                                    </h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {rtRw.map(rt => (
+                                            <button
+                                                key={rt.kode}
+                                                onClick={() => setSelectedRt(rt.kode)}
+                                                className={`btn ${selectedRt === rt.kode ? 'btn-primary' : 'btn-ghost'}`}
+                                                style={{
+                                                    textAlign: 'left',
+                                                    justifyContent: 'space-between',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    fontWeight: selectedRt === rt.kode ? 700 : 400
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <div className="dot" style={{ background: selectedRt === rt.kode ? '#fff' : 'var(--text-muted)' }}></div>
+                                                    RT {rt.kode}
+                                                </div>
+                                                {selectedRt === rt.kode && <ChevronRight size={16} />}
+                                            </button>
+                                        ))}
+                                        <div style={{ borderTop: '1px solid var(--border-color)', margin: '0.5rem 0' }}></div>
+                                        {specialCategories.map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setSelectedRt(cat)}
+                                                className={`btn ${selectedRt === cat ? 'btn-primary' : 'btn-ghost'}`}
+                                                style={{
+                                                    textAlign: 'left',
+                                                    justifyContent: 'space-between',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    fontWeight: selectedRt === cat ? 700 : 400
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <div className="dot" style={{ background: selectedRt === cat ? '#fff' : 'var(--text-muted)' }}></div>
+                                                    {cat}
+                                                </div>
+                                                {selectedRt === cat && <ChevronRight size={16} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Category Filter Container */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0 8px', borderRadius: '8px', border: '1px solid var(--border-color)', height: '42px' }}>
-                                <Filter size={14} style={{ color: 'var(--text-muted)' }} />
-                                <select
-                                    className="input"
-                                    style={{
-                                        width: '135px',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        height: '100%',
-                                        fontSize: '0.85rem',
-                                        fontWeight: 600,
-                                        padding: 0,
-                                        cursor: 'pointer'
-                                    }}
-                                    value={selectedKategori}
-                                    onChange={(e) => setSelectedKategori(e.target.value)}
-                                >
-                                    <option value="Semua">Semua Kategori</option>
-                                    {kategoris.map(k => <option key={k} value={k}>{k}</option>)}
-                                </select>
-                            </div>
-
-                            {/* Separator */}
-                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }}></div>
-
-                            {/* Add Button */}
-                            <button
-                                className="btn btn-primary"
-                                style={{
-                                    height: '42px',
+                            <div className="content-area">
+                                {/* Search & Filter Bar - Single Row Horizontal */}
+                                <div className="glass-card" style={{
+                                    padding: '0.75rem 1.25rem',
+                                    marginBottom: '1.5rem',
                                     display: 'flex',
+                                    flexDirection: 'row',
                                     alignItems: 'center',
-                                    gap: '0.5rem',
-                                    padding: '0 1.25rem',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 700,
-                                    whiteSpace: 'nowrap'
-                                }}
-                                onClick={() => {
-                                    setEditId(null);
-                                    setFormData({
-                                        rt: selectedRt === 'Semua' ? '1' : selectedRt,
-                                        kategori: 'Fakir',
-                                        nama: '',
-                                        jumlahJiwa: '',
-                                        tahun: new Date().getFullYear().toString()
-                                    });
-                                    setShowModal(true);
-                                }}
-                            >
-                                <Plus size={18} strokeWidth={3} /> Tambah Data
-                            </button>
-                        </div>
+                                    gap: '1rem',
+                                    border: '1px solid var(--border-color)',
+                                    flexWrap: 'nowrap'
+                                }}>
+                                    {/* Search Input Container */}
+                                    <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+                                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            placeholder="Cari nama kepala keluarga..."
+                                            style={{
+                                                paddingLeft: '40px',
+                                                height: '42px',
+                                                fontSize: '0.875rem'
+                                            }}
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
 
-                        <div className="glass-card">
-                            <div className="table-container">
-                                <table className="table-compact">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: '60px' }}>NO</th>
-                                            <th>Nama Kepala Keluarga</th>
-                                            <th>RT</th>
-                                            <th>Kategori</th>
-                                            <th style={{ textAlign: 'center' }}>Score</th>
-                                            <th style={{ textAlign: 'center' }}>Jiwa</th>
-                                            <th className="no-print">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredData.length > 0 ? filteredData.map((item, index) => (
-                                            <tr key={item.id}>
-                                                <td>{index + 1}</td>
-                                                <td style={{ fontWeight: 600 }}>{item.nama}</td>
-                                                <td><span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>RT {item.rt}</span></td>
-                                                <td>
-                                                    <div style={{
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.5rem',
-                                                        padding: '2px 10px',
-                                                        borderRadius: '4px',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 700,
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        color: item.kategori === 'Fakir' ? 'var(--danger)' : item.kategori === 'Miskin' ? 'var(--warning)' : 'var(--primary)',
-                                                        border: '1px solid var(--border-color)'
-                                                    }}>
-                                                        <div className="dot" style={{ background: 'currentColor' }}></div>
-                                                        {item.kategori}
-                                                    </div>
-                                                </td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    {item.score !== null ? (
-                                                        <span style={{
-                                                            background: item.score >= 80 ? 'var(--success)' : item.score >= 50 ? 'var(--warning)' : 'var(--danger)',
-                                                            color: '#fff',
-                                                            padding: '2px 8px',
-                                                            borderRadius: '10px',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 800
-                                                        }}>
-                                                            {item.score}
-                                                        </span>
-                                                    ) : '-'}
-                                                </td>
-                                                <td style={{ fontWeight: 800, textAlign: 'center' }}>{item.jumlahJiwa}</td>
-                                                <td>
-                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                        <button
-                                                            className="btn btn-ghost"
-                                                            style={{ padding: '0.4rem' }}
-                                                            onClick={() => handleEdit(item)}
-                                                            title="Edit data"
-                                                        >
-                                                            <Edit2 size={14} />
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-ghost"
-                                                            style={{ padding: '0.4rem' }}
-                                                            onClick={(e) => handleDeleteClick(e, item.id)}
-                                                            title="Hapus data"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-ghost"
-                                                            style={{ padding: '0.4rem', color: 'var(--danger)' }}
-                                                            onClick={() => {
-                                                                // Find full RT id needed for modal, item.rt is code
-                                                                const rtObj = rtRw.find(r => r.kode === item.rt);
-                                                                setSelectedDeathAsnaf({
-                                                                    ...item,
-                                                                    rt_id: rtObj ? rtObj.id : null
-                                                                });
-                                                                setShowDeathModal(true);
-                                                            }}
-                                                            title="Lapor Kematian (Santunan)"
-                                                        >
-                                                            <HeartCrack size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )) : (
-                                            <tr>
-                                                <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                                                    <AlertIcon size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                                                    <p>Tidak ada data asnaf ditemukan.</p>
-                                                    <button
-                                                        className="btn btn-ghost"
-                                                        style={{ marginTop: '1rem', border: '1px solid var(--border-color)' }}
-                                                        onClick={() => { setSearchTerm(''); setSelectedKategori('Semua'); }}
-                                                    >
-                                                        Reset Filter
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                    {/* Category Filter Container */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0 8px', borderRadius: '8px', border: '1px solid var(--border-color)', height: '42px' }}>
+                                        <Filter size={14} style={{ color: 'var(--text-muted)' }} />
+                                        <select
+                                            className="input"
+                                            style={{
+                                                width: '135px',
+                                                border: 'none',
+                                                background: 'transparent',
+                                                height: '100%',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                padding: 0,
+                                                cursor: 'pointer'
+                                            }}
+                                            value={selectedKategori}
+                                            onChange={(e) => setSelectedKategori(e.target.value)}
+                                        >
+                                            <option value="Semua">Semua Kategori</option>
+                                            {kategoris.map(k => <option key={k} value={k}>{k}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* Year Filter Container */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0 8px', borderRadius: '8px', border: '1px solid var(--border-color)', height: '42px' }}>
+                                        <select
+                                            className="input"
+                                            style={{
+                                                width: '90px',
+                                                border: 'none',
+                                                background: 'transparent',
+                                                height: '100%',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                padding: 0,
+                                                cursor: 'pointer'
+                                            }}
+                                            value={selectedTahun}
+                                            onChange={(e) => setSelectedTahun(e.target.value)}
+                                        >
+                                            {tahunList.map(t => <option key={t} value={t}>Tahun {t}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {/* Separator */}
+                                    <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }}></div>
+
+                                    {/* Add Button */}
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{
+                                            height: '42px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0 1.25rem',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 700,
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                        onClick={() => {
+                                            setEditId(null);
+                                            setFormData({
+                                                rt: selectedRt === 'Semua' ? '1' : selectedRt,
+                                                kategori: 'Fakir',
+                                                nama: '',
+                                                jumlahJiwa: '',
+                                                tahun: new Date().getFullYear().toString()
+                                            });
+                                            setShowModal(true);
+                                        }}
+                                    >
+                                        <Plus size={18} strokeWidth={3} /> Tambah Data
+                                    </button>
+                                </div>
+
+                                <div className="glass-card">
+                                    <div className="table-container">
+                                        <table className="table-compact">
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '60px' }}>NO</th>
+                                                    <th>Nama Kepala Keluarga</th>
+                                                    <th>RT</th>
+                                                    <th>Kategori</th>
+                                                    <th style={{ textAlign: 'center' }}>Score</th>
+                                                    <th style={{ textAlign: 'center' }}>Jiwa</th>
+                                                    <th className="no-print">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredData.length > 0 ? filteredData.map((item, index) => (
+                                                    <tr key={item.id}>
+                                                        <td>{index + 1}</td>
+                                                        <td style={{ fontWeight: 600 }}>{item.nama}</td>
+                                                        <td><span style={{ background: 'var(--table-row-hover)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>RT {item.rt}</span></td>
+                                                        <td>
+                                                            <div style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.5rem',
+                                                                padding: '2px 10px',
+                                                                borderRadius: '4px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 700,
+                                                                background: 'var(--table-row-hover)',
+                                                                color: item.kategori === 'Fakir' ? 'var(--danger)' : item.kategori === 'Miskin' ? 'var(--warning)' : 'var(--primary)',
+                                                                border: '1px solid var(--border-color)'
+                                                            }}>
+                                                                <div className="dot" style={{ background: 'currentColor' }}></div>
+                                                                {item.kategori}
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            {item.score !== null ? (
+                                                                <span style={{
+                                                                    background: item.score >= 80 ? 'var(--success)' : item.score >= 50 ? 'var(--warning)' : 'var(--danger)',
+                                                                    color: '#fff',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '10px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 800
+                                                                }}>
+                                                                    {item.score}
+                                                                </span>
+                                                            ) : '-'}
+                                                        </td>
+                                                        <td style={{ fontWeight: 800, textAlign: 'center' }}>{item.jumlahJiwa}</td>
+                                                        <td>
+                                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                <button
+                                                                    className="btn btn-ghost"
+                                                                    style={{ padding: '0.4rem' }}
+                                                                    onClick={() => handleEdit(item)}
+                                                                    title="Edit data"
+                                                                >
+                                                                    <Edit2 size={14} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-ghost"
+                                                                    style={{ padding: '0.4rem' }}
+                                                                    onClick={(e) => handleDeleteClick(e, item.id)}
+                                                                    title="Hapus data"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-ghost"
+                                                                    style={{ padding: '0.4rem', color: 'var(--danger)' }}
+                                                                    onClick={() => {
+                                                                        // Find full RT id needed for modal, item.rt is code
+                                                                        const rtObj = rtRw.find(r => r.kode === item.rt);
+                                                                        setSelectedDeathAsnaf({
+                                                                            ...item,
+                                                                            rt_id: rtObj ? rtObj.id : null
+                                                                        });
+                                                                        setShowDeathModal(true);
+                                                                    }}
+                                                                    title="Lapor Kematian (Santunan)"
+                                                                >
+                                                                    <HeartCrack size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )) : (
+                                                    <tr>
+                                                        <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                                            <AlertIcon size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                                                            <p>Tidak ada data asnaf ditemukan.</p>
+                                                            <button
+                                                                className="btn btn-ghost"
+                                                                style={{ marginTop: '1rem', border: '1px solid var(--border-color)' }}
+                                                                onClick={() => { setSearchTerm(''); setSelectedKategori('Semua'); }}
+                                                            >
+                                                                Reset Filter
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div >
-            </div >
+                    </>
+                )}
+            </div>
 
             {showModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
-                    <div className="glass-card" style={{ width: '100%', maxWidth: '500px', padding: '0', overflow: 'hidden' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: '1rem' }}>
+                    <div className="glass-card" style={{ width: '100%', maxWidth: '550px', padding: '0', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
                                 {editId ? 'Edit Data Asnaf' : 'Tambah Kepala Keluarga'}
                             </h3>
-                            <button onClick={closeModal} className="btn-ghost" style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
+                            <button type="button" onClick={closeModal} className="btn-ghost" style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                                 <XIcon size={20} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
+                        <form onSubmit={handleSubmit} style={{ padding: '1.5rem', overflowY: 'auto' }}>
                             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                                 <label className="label">
                                     <Users size={16} /> Nama Kepala Keluarga
@@ -822,7 +897,7 @@ const AsnafManagement = () => {
                             {/* Detailed Scoring Inputs */}
                             {/* Detailed Scoring Inputs - Conditional Rendering */}
                             {['Fisabilillah', 'Amil'].includes(formData.kategori) ? (
-                                <div className="p-3 mb-4 rounded" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid var(--border-color)' }}>
+                                <div className="p-3 mb-4 rounded" style={{ background: 'var(--table-row-hover)', border: '1px solid var(--border-color)' }}>
                                     <h6 className="text-uppercase fw-bold mb-3" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>
                                         Kriteria Penilaian ({formData.kategori})
                                     </h6>
@@ -887,7 +962,7 @@ const AsnafManagement = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
                                     <div className="form-group">
                                         <label className="label" style={{ fontSize: '0.8rem' }}>
                                             <Tent size={14} /> Status Rumah

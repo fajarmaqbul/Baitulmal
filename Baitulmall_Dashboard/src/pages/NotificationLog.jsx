@@ -96,10 +96,10 @@ const NotificationLog = () => {
                         <MessageSquare className="text-green-500" size={32} />
                         Riwayat Notifikasi
                     </h2>
-                    <p className="text-muted">Log pengiriman pesan WhatsApp otomatis</p>
+                    <p className="text-[#a1a1aa]">Log pengiriman pesan WhatsApp otomatis</p>
                 </div>
                 <button onClick={loadData} className="p-2 rounded-full hover:bg-[var(--border-color)] transition-colors self-end md:self-auto" title="Muat Ulang">
-                    <RefreshCw size={20} className={loading ? "animate-spin text-blue-500" : "text-muted"} />
+                    <RefreshCw size={20} className={loading ? "animate-spin text-blue-500" : "text-[#a1a1aa]"} />
                 </button>
             </div>
 
@@ -108,7 +108,7 @@ const NotificationLog = () => {
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <CardTitle className="text-[var(--text-main)]">Log Pesan Keluar</CardTitle>
-                            <CardDescription className="text-muted">
+                            <CardDescription className="text-[#a1a1aa]">
                                 Menampilkan {pagination.from || 0} - {pagination.to || 0} dari total {pagination.total || 0} pesan
                             </CardDescription>
                         </div>
@@ -125,7 +125,7 @@ const NotificationLog = () => {
                                 {filters.search && (
                                     <button
                                         onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
-                                        className="absolute right-3 top-2.5 text-muted hover:text-[var(--text-main)]"
+                                        className="absolute right-3 top-2.5 text-[#a1a1aa] hover:text-[var(--text-main)]"
                                     >
                                         <XCircle size={16} />
                                     </button>
@@ -150,34 +150,34 @@ const NotificationLog = () => {
                         <table className="table-modern w-full text-sm">
                             <thead>
                                 <tr className="border-b border-[var(--border-color)] bg-[var(--background)]">
-                                    <th className="h-10 px-4 text-left align-middle font-medium text-muted">Waktu</th>
-                                    <th className="h-10 px-4 text-left align-middle font-medium text-muted">Penerima</th>
-                                    <th className="h-10 px-4 text-left align-middle font-medium text-muted w-[50%]">Pesan</th>
-                                    <th className="h-10 px-4 text-center align-middle font-medium text-muted">Status</th>
+                                    <th className="h-10 px-4 text-left align-middle font-medium text-[#a1a1aa]">Waktu</th>
+                                    <th className="h-10 px-4 text-left align-middle font-medium text-[#a1a1aa]">Penerima</th>
+                                    <th className="h-10 px-4 text-left align-middle font-medium text-[#a1a1aa] w-[50%]">Pesan</th>
+                                    <th className="h-10 px-4 text-center align-middle font-medium text-[#a1a1aa]">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan="4" className="p-8 text-center text-muted">
+                                    <tr><td colSpan="4" className="p-8 text-center text-[#a1a1aa]">
                                         <div className="flex justify-center items-center gap-2">
                                             <RefreshCw className="animate-spin" size={16} /> Memuat data...
                                         </div>
                                     </td></tr>
                                 ) : logs.length === 0 ? (
-                                    <tr><td colSpan="4" className="p-8 text-center text-muted">
+                                    <tr><td colSpan="4" className="p-8 text-center text-[#a1a1aa]">
                                         Tidak ada data yang ditemukan.
                                     </td></tr>
                                 ) : (
                                     logs.map((log) => (
                                         <tr key={log.id} className="border-b border-[var(--border-color)] hover:bg-[var(--border-color)]/20 transition-colors group">
-                                            <td className="p-4 align-middle whitespace-nowrap text-muted">
+                                            <td className="p-4 align-middle whitespace-nowrap text-[#a1a1aa]">
                                                 {format(new Date(log.created_at), 'dd MMM HH:mm', { locale: idLocale })}
                                             </td>
                                             <td className="p-4 align-middle font-medium text-[var(--text-main)]">
                                                 {log.recipient_phone}
                                             </td>
                                             <td
-                                                className="p-4 align-middle text-muted max-w-md truncate cursor-pointer hover:text-[var(--text-main)] transition-colors"
+                                                className="p-4 align-middle text-[#a1a1aa] max-w-md truncate cursor-pointer hover:text-[var(--text-main)] transition-colors"
                                                 title="Klik untuk melihat detail"
                                                 onClick={() => setSelectedLog(log)}
                                             >
@@ -196,7 +196,7 @@ const NotificationLog = () => {
                     {/* Pagination */}
                     {pagination.last_page > 1 && (
                         <div className="flex justify-between items-center border-t border-[var(--border-color)] pt-4">
-                            <span className="text-xs text-muted">
+                            <span className="text-xs text-[#a1a1aa]">
                                 Halaman {pagination.current_page} dari {pagination.last_page}
                             </span>
                             <div className="flex gap-2">
@@ -232,20 +232,20 @@ const NotificationLog = () => {
                     {selectedLog && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-3 gap-2 text-sm">
-                                <span className="font-semibold text-muted">Penerima:</span>
+                                <span className="font-semibold text-[#a1a1aa]">Penerima:</span>
                                 <span className="col-span-2 text-[var(--text-main)]">{selectedLog.recipient_phone}</span>
 
-                                <span className="font-semibold text-muted">Waktu:</span>
+                                <span className="font-semibold text-[#a1a1aa]">Waktu:</span>
                                 <span className="col-span-2 text-[var(--text-main)]">
                                     {format(new Date(selectedLog.created_at), 'dd MMMM yyyy, HH:mm', { locale: idLocale })}
                                 </span>
 
-                                <span className="font-semibold text-muted">Status:</span>
+                                <span className="font-semibold text-[#a1a1aa]">Status:</span>
                                 <span className="col-span-2">{getStatusBadge(selectedLog.status)}</span>
                             </div>
 
                             <div className="space-y-1">
-                                <span className="text-sm font-semibold text-muted">Isi Pesan:</span>
+                                <span className="text-sm font-semibold text-[#a1a1aa]">Isi Pesan:</span>
                                 <div className="p-3 bg-[var(--background)] border border-[var(--border-color)] rounded-md text-sm whitespace-pre-wrap text-[var(--text-main)] max-h-[300px] overflow-y-auto">
                                     {selectedLog.message}
                                 </div>

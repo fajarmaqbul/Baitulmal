@@ -67,7 +67,7 @@ class SmartAssistantController extends Controller
         else if (str_contains($query, 'halo') || str_contains($query, 'hai') || str_contains($query, 'assalamualaikum')) {
             $response = [
                 'type' => 'text',
-                'message' => "Assalamu'alaikum Warahmatullahi Wabarakatuh! 🙏\nSaya **Asisten Cerdas Baitulmall**.\n\nSaya siap membantu Anda dengan informasi:\n\n🧮 **Layanan Zakat**\nHitung zakat maal, emas, atau penghasilan.\n\n📊 **Data Kepedulian**\nCek data Fakir Miskin, Yatim Piatu, dan Dhuafa di setiap RT.\n\n🕌 **Laporan Keuangan**\nInfo terkini perolehan Infak dan Zakat Fitrah.\n\nSilakan ketik pertanyaan Anda.",
+                'message' => "Assalamu'alaikum Warahmatullahi Wabarakatuh! 🙏\nSaya **Asisten Cerdas Baitulmal**.\n\nSaya siap membantu Anda dengan informasi:\n\n🧮 **Layanan Zakat**\nHitung zakat maal, emas, atau penghasilan.\n\n📊 **Data Kepedulian**\nCek data Fakir Miskin, Yatim Piatu, dan Dhuafa di setiap RT.\n\n🕌 **Laporan Keuangan**\nInfo terkini perolehan Infak dan Zakat Fitrah.\n\nSilakan ketik pertanyaan Anda.",
                 'data' => null
             ];
         }
@@ -425,7 +425,7 @@ class SmartAssistantController extends Controller
         $eventName = $data['event_name'] ?? 'Rapat Koordinasi Zakat';
         $date = $data['date'] ?? Carbon::now()->addDays(3)->isoFormat('dddd, D MMMM Y');
         $time = $data['time'] ?? '19:30 WIB';
-        $location = $data['location'] ?? 'Masjid Baitulmall';
+        $location = $data['location'] ?? 'Masjid Baitulmal';
 
         $rts = RT::all();
         $invitees = $rts->map(function($rt) {
@@ -473,7 +473,7 @@ class SmartAssistantController extends Controller
             <p>Wassalamu'alaikum Warahmatullahi Wabarakatuh.</p>
 
             <div style='margin-top: 50px; text-align: right;'>
-                <p>Ketua Baitulmall,</p>
+                <p>Ketua Baitulmal,</p>
                 <br><br><br>
                 <p><strong>H. Ahmad Fulan</strong></p>
             </div>
@@ -505,7 +505,7 @@ class SmartAssistantController extends Controller
             <p>Yang bertanda tangan di bawah ini:</p>
             <table style='margin-left: 20px;'>
                 <tr><td width='100'>Nama</td><td>: H. Ahmad Fulan</td></tr>
-                <tr><td>Jabatan</td><td>: Ketua Baitulmall</td></tr>
+                <tr><td>Jabatan</td><td>: Ketua Baitulmal</td></tr>
             </table>
 
             <p>Memberikan tugas kepada nama-nama di bawah ini:</p>
@@ -538,7 +538,7 @@ class SmartAssistantController extends Controller
             <div style='text-align: right; margin-top: 40px;'>
                 <p>Ditetapkan di: Kota Sejahtera<br>Pada Tanggal: " . Carbon::now()->isoFormat('D MMMM Y') . "</p>
                 <br>
-                <p>Ketua Baitulmall,</p>
+                <p>Ketua Baitulmal,</p>
                 <br><br><br>
                 <p><strong>H. Ahmad Fulan</strong></p>
             </div>
@@ -601,7 +601,7 @@ class SmartAssistantController extends Controller
             $rundown[] = [
                 'time_start' => sprintf("%02d:45", $startHour),
                 'time_end' => sprintf("%02d:15", $startHour + 1),
-                'activity' => 'Sambutan Ketua Baitulmall',
+                'activity' => 'Sambutan Ketua Baitulmal',
                 'person_in_charge' => 'Ketua Panitia',
                 'notes' => 'Laporan penyaluran'
             ];

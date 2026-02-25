@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Search, ShoppingBag, MessageCircle, MapPin, Tag } from 'lucide-react';
+import { Search, ShoppingBag, MessageCircle, MapPin, Tag, Heart, Zap, ArrowRight, Landmark } from 'lucide-react';
 
 const Etalase = () => {
     const [products, setProducts] = useState([]);
@@ -14,9 +14,25 @@ const Etalase = () => {
 
     const categories = ['All', 'Kuliner', 'Kerajinan', 'Jasa', 'Lainnya'];
 
+    const productImageMap = {
+        'Kripik Pisang Kepok Manis': '/images/products/kripik_pisang_etalase_1771967201005.png',
+        'Kerajinan Anyaman Bambu': '/images/products/anyaman_bambu_etalase_1771967219545.png',
+        'Sambal Pecel Madiun Asli': '/images/products/sambal_pecel_etalase_1771967237842.png',
+        'Jasa Laundry Setrika': '/images/products/laundry_service_etalase_1771967256614.png',
+        'Gantungan Kunci Kayu Ukir': '/images/products/ukir_kayu_etalase_1771967272266.png',
+        'Telur Asin Aneka Rasa': '/images/products/telur_asin_etalase_1771967293624.png',
+        'Keripik Singkong': '/images/products/kripik_singkong_etalase_1771967311878.png',
+        'Tas Anyaman Pandan': '/images/products/tas_pandan_etalase_1771967330970.png',
+        'Jasa Jahit & Permak': '/images/products/jasa_jahit_etalase_1771967352340.png',
+        'Kemeja Batik Cap': '/images/products/batik_cap_etalase_1771967372319.png',
+        'Sambal Bawang Botol': '/images/products/sambal_bawang_botol_etalase_v2_1771989232801.png',
+    };
+
     useEffect(() => {
         fetchProducts();
     }, [filters.category]);
+
+
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -25,7 +41,7 @@ const Etalase = () => {
             if (filters.category !== 'All') params.category = filters.category;
             if (filters.search) params.search = filters.search;
 
-            const response = await api.get('/products', { params });
+            const response = await api.get('/products-public', { params });
             setProducts(response.data.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -40,165 +56,177 @@ const Etalase = () => {
     };
 
     const handleBuy = (product) => {
-        const message = `Halo ${product.seller_name}, saya lihat *${product.name}* di Etalase Baitulmall. Apakah stok masih tersedia?`;
+        const message = `Halo ${product.seller_name}, saya lihat *${product.name}* di Etalase Baitulmal. Apakah stok masih tersedia?`;
         const url = `https://wa.me/${product.seller_phone}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
 
     return (
-        <div className="space-y-8 animate-fade-in pb-10">
-            {/* Header */}
-            <div className="flex items-center justify-between py-4 px-2">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-tr from-[var(--primary)] to-emerald-400 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-200">
-                        B
+        <div className="min-h-screen bg-[#0a0a0a] text-[#e4e4e7] selection:bg-primary selection:text-white font-['Inter',_sans-serif] scroll-smooth">
+            {/* Navbar */}
+            <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.03] bg-[#0a0a0a]/70 backdrop-blur-2xl">
+                <div className="w-full px-10 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/10">
+                            <Heart className="text-white" size={16} fill="currentColor" />
+                        </div>
+                        <h3 className="font-bold text-lg tracking-tighter text-white m-0 leading-none">Baitulmal<span className="text-primary"> Fajar Maqbul</span></h3>
                     </div>
-                    <div>
-                        <h1 className="font-bold text-xl text-[var(--text-main)] tracking-tight">Baitulmall</h1>
-                        <p className="text-xs text-[var(--text-muted)]">Masjid Fajar Maqbul</p>
+                    <div className="flex items-center gap-6">
+                        <a href="/public" className="text-xs font-bold text-[#a1a1aa] hover:text-white transition-all decoration-none">Public</a>
+                        <a href="/tatakelola" className="text-xs font-bold text-[#a1a1aa] hover:text-white transition-all decoration-none">Tata Kelola</a>
+                        <a href="/etalase" className="text-xs font-bold text-white transition-all decoration-none">Etalase</a>
+                        <a href="/login" className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs font-bold border border-white/[0.05] transition-all flex items-center gap-2 group decoration-none">
+                            Admin <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                        </a>
                     </div>
                 </div>
-                <a href="/login" className="px-5 py-2 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all font-medium text-sm">
-                    Login Admin
-                </a>
-            </div>
+            </nav>
 
             {/* Hero Section */}
-            <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-hover)] rounded-3xl p-8 md:p-12 text-white shadow-lg relative overflow-hidden">
-                <div className="relative z-10 max-w-2xl">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                            <ShoppingBag size={24} />
-                        </div>
-                        <span className="font-semibold tracking-wider text-sm uppercase bg-white/10 px-3 py-1 rounded-full text-white">Zakat Produktif</span>
+            <header className="relative pt-48 pb-24 px-10 overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-emerald-500/5 blur-[120px] rounded-full -mt-40"></div>
+                <div className="max-w-6xl mx-auto text-center relative z-10">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/5 border border-emerald-500/10 text-emerald-500 text-[10px] font-bold tracking-[0.2em] uppercase mb-8">
+                        <ShoppingBag size={10} fill="currentColor" /> Zakat Produktif Program
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-                        Etalase UMKM Binaan
+                    <h1 className="text-5xl md:text-7xl font-black text-white mb-6 tracking-tight leading-[1.1]">
+                        Etalase <span className="text-emerald-500">Public</span> <br />
+                        UMKM Binaan Fajar Maqbul
                     </h1>
-                    <p className="text-lg opacity-90 mb-8 leading-relaxed">
-                        Belanja sambil beramal. Dukung ekonomi lokal dengan membeli produk karya warga binaan dan mustahik Baitulmall.
+                    <p className="max-w-2xl mx-auto text-[#a1a1aa] text-lg md:text-xl leading-relaxed font-medium mb-12">
+                        Dukung ekonomi lokal dengan membeli produk karya mustahik & warga binaan. Belanja berkah, memberdayakan umat.
                     </p>
 
-                    {/* Search Bar in Hero */}
-                    <form onSubmit={handleSearch} className="relative max-w-lg">
+                    {/* Search Bar - Solid Design */}
+                    <form onSubmit={handleSearch} className="relative max-w-xl mx-auto">
                         <input
                             type="text"
                             placeholder="Cari camilan, kerajinan, atau jasa..."
-                            className="w-full pl-12 pr-4 py-4 rounded-xl text-[var(--text-main)] bg-[var(--card-bg)] focus:outline-none focus:ring-4 focus:ring-white/10 shadow-xl border border-[var(--border-color)] placeholder-[var(--text-muted)]"
+                            className="w-full pl-12 pr-4 py-4 rounded-xl text-white bg-white/[0.03] focus:outline-none focus:ring-1 focus:ring-emerald-500/50 border border-white/[0.05] placeholder-[#71717a] text-sm font-medium transition-all"
                             value={filters.search}
                             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                         />
-                        <Search className="absolute left-4 top-4 text-[var(--text-muted)]" size={24} />
-                        <button type="submit" className="absolute right-2 top-2 bg-[var(--primary)] text-white px-6 py-2 rounded-lg hover:brightness-110 transition-all font-medium">
+                        <Search className="absolute left-4 top-4 text-[#71717a]" size={18} />
+                        <button type="submit" className="absolute right-2 top-2 bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600 transition-all font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">
                             Cari
                         </button>
                     </form>
                 </div>
+            </header>
 
-                {/* Decorative Pattern */}
-                <div className="absolute right-0 top-0 w-1/3 h-full opacity-10 hidden md:block">
-                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                        <path fill="#FFFFFF" d="M42.7,-62.9C50.9,-52.8,50.1,-34.4,51.7,-19.2C53.4,-4,57.4,8,54,17.7C50.6,27.4,39.8,34.8,29.3,46.3C18.8,57.8,8.5,73.4,-4.3,79.3C-17.1,85.2,-32.4,81.3,-43.3,70.5C-54.2,59.7,-60.7,41.9,-65.7,24.4C-70.7,6.9,-74.2,-10.3,-68.6,-24.8C-63,-39.3,-48.3,-51.1,-34.5,-58.5C-20.7,-65.9,-7.8,-68.9,4,-74.3C15.8,-79.8,34.5,-73,42.7,-62.9Z" transform="translate(100 100)" />
-                    </svg>
-                </div>
-            </div>
-
-            {/* Category Filter */}
-            <div className="flex overflow-x-auto pb-2 gap-3 no-scrollbar">
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setFilters(prev => ({ ...prev, category: cat }))}
-                        className={`px-6 py-2 rounded-full whitespace-nowrap transition-all font-medium ${filters.category === cat
-                            ? 'bg-[var(--primary)] text-white shadow-md'
-                            : 'bg-[var(--card-bg)] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--background)]'
-                            }`}
-                    >
-                        {cat}
-                    </button>
-                ))}
-            </div>
-
-            {/* Product Grid */}
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="h-80 bg-[var(--card-bg)] rounded-2xl animate-pulse"></div>
+            {/* Main Content */}
+            <main className="w-full px-10 pb-32">
+                {/* Category Filter */}
+                <div className="flex overflow-x-auto pb-6 gap-3 no-scrollbar justify-center mb-16 border-b border-white/[0.03]">
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setFilters(prev => ({ ...prev, category: cat }))}
+                            className={`px-6 py-2.5 rounded-lg whitespace-nowrap transition-all font-bold text-[10px] uppercase tracking-widest border ${filters.category === cat
+                                ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                                : 'bg-white/[0.02] border-white/[0.05] text-[#71717a] hover:text-white hover:border-white/[0.1]'
+                                }`}
+                        >
+                            {cat}
+                        </button>
                     ))}
                 </div>
-            ) : products.length === 0 ? (
-                <div className="text-center py-20 bg-[var(--card-bg)] rounded-3xl border border-dashed border-[var(--border-color)]">
-                    <ShoppingBag size={48} className="mx-auto text-[var(--text-muted)] mb-4" />
-                    <h3 className="text-xl font-bold text-[var(--text-muted)]">Belum ada produk ditemukan</h3>
-                    <p className="text-[var(--text-muted)] opacity-70">Coba kata kunci lain atau kategori berbeda.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {products.map(product => (
-                        <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border border-[var(--border-color)] bg-[var(--card-bg)] overflow-hidden rounded-2xl h-full flex flex-col">
-                            {/* Image Placeholder */}
-                            <div className="h-48 bg-[var(--background)] relative overflow-hidden">
-                                {product.image_url ? (
-                                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-[var(--background)] text-[var(--text-muted)]">
-                                        <ShoppingBag size={48} />
-                                    </div>
-                                )}
-                                <div className="absolute top-3 left-3">
-                                    <Badge className="bg-[var(--card-bg)]/90 backdrop-blur-md text-[var(--text-main)] hover:bg-[var(--card-bg)] shadow-sm border border-[var(--border-color)]">
-                                        {product.category}
-                                    </Badge>
-                                </div>
-                            </div>
 
-                            <CardContent className="p-5 flex-1 flex flex-col">
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-lg text-[var(--text-main)] mb-1 line-clamp-1 group-hover:text-[var(--primary)] transition-colors">
-                                        {product.name}
-                                    </h3>
-                                    <p className="text-sm text-[var(--text-muted)] mb-3 line-clamp-2 h-10">
-                                        {product.description || 'Tidak ada deskripsi.'}
-                                    </p>
-
-                                    <div className="flex items-center gap-2 mb-4 text-xs font-medium text-[var(--text-muted)] bg-[var(--background)] border border-[var(--border-color)] p-2 rounded-lg">
-                                        <div className="w-6 h-6 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
-                                            {product.seller_name.charAt(0)}
+                {/* Product Grid */}
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} className="h-96 bg-white/[0.02] rounded-3xl animate-pulse border border-white/[0.03]"></div>
+                        ))}
+                    </div>
+                ) : products.length === 0 ? (
+                    <div className="text-center py-32 bg-white/[0.01] rounded-3xl border border-white/[0.03]">
+                        <ShoppingBag size={40} className="text-[#27272a] mx-auto mb-6" />
+                        <h3 className="text-xl font-bold text-white mb-2">Belum ada produk</h3>
+                        <p className="text-[#71717a] text-sm">Coba kata kunci lain atau pilih kategori yang berbeda.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                        {products.map(product => (
+                            <div key={product.id} className="group bg-[#121212] border border-white/[0.03] hover:border-emerald-500/20 transition-all duration-500 rounded-3xl overflow-hidden flex flex-col shadow-xl">
+                                {/* Image Area */}
+                                <div className="h-56 bg-black/40 relative overflow-hidden group/img">
+                                    {(product.image_url || productImageMap[product.name]) ? (
+                                        <img
+                                            src={product.image_url || productImageMap[product.name]}
+                                            alt={product.name}
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90 group-hover:opacity-100"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-[#27272a]">
+                                            <ShoppingBag size={48} strokeWidth={1} />
                                         </div>
-                                        <div className="flex-1 truncate">
-                                            {product.seller_name}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-[var(--primary)] text-xs">
-                                            {product.rt ? `RT ${product.rt.kode}` : 'N/A'}
-                                            {product.maps_link && (
-                                                <a href={product.maps_link} target="_blank" rel="noreferrer" className="ml-2 bg-[var(--background)] p-1 rounded-full hover:bg-[var(--primary)] hover:text-white transition-colors" title="Lihat Lokasi">
-                                                    <MapPin size={12} />
-                                                </a>
-                                            )}
-                                        </div>
+                                    )}
+                                    <div className="absolute top-4 left-4">
+                                        <span className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[#e4e4e7] text-[9px] font-bold uppercase tracking-widest border border-white/5">
+                                            {product.category}
+                                        </span>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-3 mt-auto pt-4 border-t border-[var(--border-color)]">
-                                    <div>
-                                        <p className="text-xs text-[var(--text-muted)]">Harga</p>
-                                        <p className="font-bold text-lg text-[var(--text-main)]">
-                                            Rp {Number(product.price).toLocaleString('id-ID')}
+                                {/* Content Area */}
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 tracking-tight">
+                                            {product.name}
+                                        </h3>
+                                        <p className="text-[#71717a] text-xs leading-relaxed line-clamp-2 h-8 font-medium">
+                                            {product.description || 'Produk UMKM binaan Masjid Baitulmal Fajar Maqbul.'}
                                         </p>
                                     </div>
-                                    <button
-                                        onClick={() => handleBuy(product)}
-                                        className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-xl flex items-center gap-2 px-4 transition-all shadow-green-200 shadow-lg hover:shadow-green-300"
-                                    >
-                                        <MessageCircle size={18} />
-                                        <span className="text-sm font-bold">Beli</span>
-                                    </button>
+
+                                    {/* Seller Info */}
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.03] mb-6">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xs font-black">
+                                            {product.seller_name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] font-bold text-white truncate m-0 uppercase">{product.seller_name}</p>
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-[#71717a] uppercase tracking-wider mt-0.5">
+                                                <MapPin size={8} className="text-emerald-500" /> {product.rt ? `RT ${product.rt.kode}` : 'Kandri'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Area */}
+                                    <div className="mt-auto pt-5 border-t border-white/[0.03] flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-[9px] font-bold text-[#71717a] uppercase tracking-widest m-0 mb-0.5">Harga</p>
+                                            <p className="text-lg font-black text-white m-0 tracking-tighter">
+                                                Rp {Number(product.price).toLocaleString('id-ID')}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleBuy(product)}
+                                            className="px-5 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-[9px] tracking-widest uppercase hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/10"
+                                        >
+                                            <MessageCircle size={14} /> WhatsApp
+                                        </button>
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </main>
+
+            {/* Footer */}
+            <footer className="py-24 border-t border-white/[0.03] text-center bg-black/20">
+                <div className="flex items-center justify-center gap-3 mb-8">
+                    <div className="w-6 h-6 bg-emerald-500/10 rounded-md flex items-center justify-center text-emerald-500">
+                        <ShoppingBag size={14} fill="currentColor" />
+                    </div>
+                    <span className="text-sm font-bold text-white tracking-widest uppercase">Baitulmal Fajar Maqbul Etalase</span>
                 </div>
-            )}
+                <p className="text-[#71717a] text-[9px] font-bold tracking-[0.5em] uppercase mb-10 m-0">Economic Empowerment &bull; Local Wisdom &bull; Productivity</p>
+                <div className="text-[10px] text-[#71717a] font-medium">&copy; {new Date().getFullYear()} UMKM Digital Ecosystem.</div>
+            </footer>
         </div>
     );
 };

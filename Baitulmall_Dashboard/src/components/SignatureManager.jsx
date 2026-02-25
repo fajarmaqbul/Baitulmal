@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import {
     Plus,
     Edit2,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { fetchRTs } from '../services/asnafApi';
 
-const API_Base = 'http://127.0.0.1:8000/api/v1';
+// Centralized api instance is imported
 
 const SignatureManager = () => {
     const [signers, setSigners] = useState([]);
@@ -45,8 +45,8 @@ const SignatureManager = () => {
             setLoading(true);
             try {
                 const [signerRes, ruleRes, rtData] = await Promise.all([
-                    axios.get(`${API_Base}/signers`),
-                    axios.get(`${API_Base}/signature-rules`),
+                    api.get('/signers'),
+                    api.get('/signature-rules'),
                     fetchRTs()
                 ]);
                 setSigners(signerRes.data.data);
@@ -67,9 +67,9 @@ const SignatureManager = () => {
         e.preventDefault();
         try {
             if (editingSigner) {
-                await axios.put(`${API_Base}/signers/${editingSigner.id}`, signerForm);
+                await api.put(`/signers/${editingSigner.id}`, signerForm);
             } else {
-                await axios.post(`${API_Base}/signers`, signerForm);
+                await api.post('/signers', signerForm);
             }
             setSignerForm({ nama_pejabat: '', jabatan: '', nip: '' });
             setEditingSigner(null);
@@ -82,7 +82,7 @@ const SignatureManager = () => {
     const handleDeleteSigner = async (id) => {
         if (!window.confirm('Hapus pejabat ini? Aturan yang menggunakan pejabat ini akan kehilangan referensi.')) return;
         try {
-            await axios.delete(`${API_Base}/signers/${id}`);
+            await api.delete(`/signers/${id}`);
             setRefreshTrigger(p => p + 1);
         } catch (err) {
             alert('Gagal menghapus data');
@@ -115,9 +115,9 @@ const SignatureManager = () => {
             };
 
             if (editingRuleId) {
-                await axios.put(`${API_Base}/signature-rules/${editingRuleId}`, payload);
+                await api.put(`/signature-rules/${editingRuleId}`, payload);
             } else {
-                await axios.post(`${API_Base}/signature-rules`, payload);
+                await api.post('/signature-rules', payload);
             }
 
             // Reset
@@ -150,7 +150,7 @@ const SignatureManager = () => {
     const handleDeleteRule = async (id) => {
         if (!window.confirm('Hapus aturan ini?')) return;
         try {
-            await axios.delete(`${API_Base}/signature-rules/${id}`);
+            await api.delete(`/signature-rules/${id}`);
             setRefreshTrigger(p => p + 1);
         } catch (err) {
             alert('Gagal menghapus aturan');

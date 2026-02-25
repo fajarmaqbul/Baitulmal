@@ -5,16 +5,19 @@ namespace App\Http\Controllers\ApiControllers;
 use App\Http\Controllers\Controller;
 use App\Models\Sedekah;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 use App\Services\WhatsAppService;
 
 class SedekahController extends Controller
 {
     protected $whatsAppService;
+    protected $receiptService;
 
-    public function __construct(WhatsAppService $whatsAppService)
+    public function __construct(WhatsAppService $whatsAppService, \App\Services\ReceiptService $receiptService)
     {
         $this->whatsAppService = $whatsAppService;
+        $this->receiptService = $receiptService;
     }
 
     public function index(Request $request)
@@ -27,6 +30,10 @@ class SedekahController extends Controller
 
         if ($request->has('tahun')) {
             $query->where('tahun', $request->tahun);
+        }
+
+        if ($request->has('bulan')) {
+            $query->whereMonth('tanggal', $request->bulan);
         }
 
         if ($request->has('rt_id')) {
@@ -69,11 +76,19 @@ class SedekahController extends Controller
 
         $sedekah = Sedekah::create($validated);
 
+        // Generate Receipt PDF
+        $receiptPath = $this->receiptService->generateReceipt('sedekah', $sedekah);
+        $receiptUrl = $this->receiptService->getReceiptUrl($receiptPath);
+
+        // Update with receipt path
+        $sedekah->update(['receipt_path' => $receiptPath]);
+
         // Send WhatsApp Notification
         if ($sedekah->jenis === 'penerimaan' && $sedekah->no_hp_donatur) {
             $message = "Terima kasih Bpk/Ibu *" . ($sedekah->nama_donatur ?? 'Hamba Allah') . "*\n\n";
             $message .= "Kami telah menerima donasi Anda sebesar *Rp " . number_format($sedekah->jumlah, 0, ',', '.') . "*\n";
             $message .= "Semoga Allah membalas kebaikan Anda dengan pahala yang berlipat ganda. Aamiin.\n\n";
+            $message .= "📄 *Download Kwitansi Digital:* \n" . $receiptUrl . "\n\n";
             $message .= "_Baitulmal Masjid_";
 
             $this->whatsAppService->send($sedekah->no_hp_donatur, $message);
@@ -123,6 +138,10 @@ class SedekahController extends Controller
             $query->where('tahun', $request->tahun);
         }
 
+        if ($request->has('bulan')) {
+            $query->whereMonth('tanggal', $request->bulan);
+        }
+
         if ($request->has('rt_id')) {
             $query->where('rt_id', $request->rt_id);
         }
@@ -131,19 +150,28 @@ class SedekahController extends Controller
         $penyaluran = (clone $query)->where('jenis', 'penyaluran')->sum('jumlah');
         $count = $query->count();
 
-        // Detailed breakdown by RT
-        $breakdownByRT = \App\Models\RT::all()->map(function($rt) use ($request) {
-            $rtQuery = Sedekah::where('rt_id', $rt->id)->where('jenis', 'penerimaan');
-            if ($request->has('tahun')) {
-                $rtQuery->where('tahun', $request->tahun);
-            }
-            
+        // Optimized breakdown by RT using single aggregate query
+        $statsByRT = Sedekah::where('jenis', 'penerimaan')
+            ->select(
+                'rt_id',
+                DB::raw('SUM(jumlah) as total_nominal'),
+                DB::raw('COUNT(*) as transaction_count'),
+                DB::raw('MAX(tanggal) as last_txn_date')
+            )
+            ->when($request->has('tahun'), fn($q) => $q->where('tahun', $request->tahun))
+            ->when($request->has('bulan'), fn($q) => $q->whereMonth('tanggal', $request->bulan))
+            ->groupBy('rt_id')
+            ->get()
+            ->keyBy('rt_id');
+
+        $breakdownByRT = \App\Models\RT::all()->map(function($rt) use ($statsByRT) {
+            $stats = $statsByRT->get($rt->id);
             return [
                 'rt_id' => $rt->id,
                 'rt_kode' => $rt->kode,
-                'total_nominal' => (float) $rtQuery->sum('jumlah'),
-                'transaction_count' => $rtQuery->count(),
-                'last_transaction' => $rtQuery->latest('tanggal')->first()?->tanggal?->toDateString()
+                'total_nominal' => (float) ($stats->total_nominal ?? 0),
+                'transaction_count' => (int) ($stats->transaction_count ?? 0),
+                'last_transaction' => $stats->last_txn_date ?? null
             ];
         });
 

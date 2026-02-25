@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001/api/v1';
 
 const api = axios.create({
     baseURL: BASE_URL,
@@ -17,6 +17,33 @@ api.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
+}, (error) => {
+    return Promise.reject(error);
 });
+
+// Interceptor for global error handling
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // Handle 401 Unauthorized (Expired token)
+        if (error.response?.status === 401) {
+            console.warn("Session expired or unauthorized. Logging out...");
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+
+            // Avoid infinite redirect loop
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = '/login?expired=true';
+            }
+        }
+
+        // Global error logging for production monitoring (simulated)
+        if (error.response?.status >= 500) {
+            console.error("Critical Server Error:", error.response.data);
+        }
+
+        return Promise.reject(error);
+    }
+);
 
 export default api;

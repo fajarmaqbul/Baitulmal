@@ -1,10 +1,4 @@
-import axios from 'axios';
-
-// Configure axios instance with base URL
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1',
-    headers: { 'Content-Type': 'application/json' }
-});
+import api from './api';
 
 /**
  * Fetch active signer based on structure context and role

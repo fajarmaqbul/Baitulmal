@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import { X, Search } from 'lucide-react';
 
 const AgendaAssignmentModal = ({ agenda, onClose, onSuccess }) => {
@@ -10,7 +10,7 @@ const AgendaAssignmentModal = ({ agenda, onClose, onSuccess }) => {
 
     useEffect(() => {
         // Fetch people for dropdown
-        axios.get('http://127.0.0.1:8000/api/v1/people')
+        api.get('/people')
             .then(res => setPeople(res.data.data))
             .catch(err => console.error(err));
     }, []);
@@ -19,7 +19,7 @@ const AgendaAssignmentModal = ({ agenda, onClose, onSuccess }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await axios.post(`http://127.0.0.1:8000/api/v1/agendas/${agenda.id}/assign`, {
+            await api.post(`/agendas/${agenda.id}/assign`, {
                 person_id: selectedPerson,
                 jabatan: role
             });

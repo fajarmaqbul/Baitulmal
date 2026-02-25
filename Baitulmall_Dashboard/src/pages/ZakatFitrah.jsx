@@ -1,40 +1,57 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { fetchZakatFitrahList, fetchMuzakiStats, createZakatFitrah, updateZakatFitrah, deleteZakatFitrahApi } from '../services/zakatFitrahApi';
 import { fetchActiveSigner } from '../services/documentApi'; // Removed but keeping line for safe deletion if needed or just empty
+import { fetchDistribusi, saveDistribusi, deleteDistribusi } from '../services/distribusiApi';
 
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import PrintLayout from '../components/PrintLayout';
 import OfficialDocumentTemplate from '../components/Print/OfficialDocumentTemplate';
+import ZakatFitrahPrint from '../components/ZakatFitrah/ZakatFitrahPrint';
+import MuzakiReceipt from '../components/ZakatFitrah/MuzakiReceipt';
+import MuzakiFormModal from '../components/ZakatFitrah/MuzakiFormModal';
+import ZakatConfirmModal from '../components/ZakatFitrah/ZakatConfirmModal';
 import { usePagePrint } from '../hooks/usePagePrint';
 import { useSignatureRule } from '../hooks/useSignatureRule';
 import {
     Plus,
-    Filter,
-    Users,
-    ChevronRight,
-    Download,
-    Printer,
-    CheckCircle,
-    Circle,
     Edit2,
     Trash2,
-    Loader2,
-    Save,
-    Info,
+    Printer,
+    FileText,
+    Download,
     RefreshCw,
+    CheckCircle,
+    Users,
     TrendingUp,
-    Lock,
-    Unlock,
-    Heart,
-    ExternalLink,
     Shield,
-    Search
+    Search,
+    AlertCircle,
+    Save,
+    Filter,
+    Circle,
+    Loader2,
+    Info
 } from 'lucide-react';
 import { exportToExcel } from '../utils/dataUtils';
 import { fetchAsnafList, fetchRTs } from '../services/asnafApi';
 import { fetchSettings, updateSetting, createSetting } from '../services/settingApi';
+import useRealtimeStats from '../hooks/useRealtimeStats';
+
+// Modular Components
+import MuzakiTab from '../components/ZakatFitrah/MuzakiTab';
+import CalculationTab from '../components/ZakatFitrah/CalculationTab';
+import DistributionTab from '../components/ZakatFitrah/DistributionTab';
+import HistoryTab from '../components/ZakatFitrah/HistoryTab';
+import { useRole } from '../contexts/RoleContext';
+
 
 const ZakatFitrah = () => {
+    const { hasPermission } = useRole();
+
+    // Permissions
+    const canDeleteMuzaki = hasPermission('delete_muzaki');
+    const canEditConfig = hasPermission('edit_zakat_config');
+    const canConfirmDist = hasPermission('confirm_distribution');
 
     // ... (other state)
     const [muzakiList, setMuzakiList] = useState([]);
@@ -46,6 +63,14 @@ const ZakatFitrah = () => {
     const [deleteModal, setDeleteModal] = useState({ open: false, id: null, loading: false });
     const [confirmDistModal, setConfirmDistModal] = useState({ open: false, loading: false });
     const [receiptModal, setReceiptModal] = useState({ open: false, data: null });
+    const [distDeleteModal, setDistDeleteModal] = useState({ open: false, id: null, loading: false });
+    const [selectedHistoryIds, setSelectedHistoryIds] = useState([]);
+    const [bulkDistDeleteModal, setBulkDistDeleteModal] = useState({ open: false, loading: false });
+    const [confirmLockModal, setConfirmLockModal] = useState({ open: false, loading: false });
+    const [confirmUnlockModal, setConfirmUnlockModal] = useState({ open: false, loading: false });
+
+    // Audit Log State
+    const [auditLogs, setAuditLogs] = useState([]);
 
     const [activeTab, setActiveTab] = useState('muzaki');
     const [selectedRt, setSelectedRt] = useState('01');
@@ -54,6 +79,7 @@ const ZakatFitrah = () => {
     const [distribusiKategori, setDistribusiKategori] = useState('Fakir');
     const [distribusiStatus, setDistribusiStatus] = useState({});
     const [zakatDistribution, setZakatDistribution] = useState([]); // list → []
+    const [distribusiHistoryList, setDistribusiHistoryList] = useState([]);
     const [strukturInti, setStrukturInti] = useState(null); // object → null
     const [isLocked, setIsLocked] = useState(false);
     const [settingsList, setSettingsList] = useState([]);
@@ -68,6 +94,12 @@ const ZakatFitrah = () => {
         total: 0,
         from: 0,
         to: 0
+    });
+
+    // Real-time Statistics Hook
+    const { stats: rtStats, loading: rtLoading } = useRealtimeStats(selectedTahun, {
+        pollingInterval: 5000,
+        enablePolling: true
     });
 
     // Debounce search
@@ -108,16 +140,44 @@ const ZakatFitrah = () => {
     const handlePrintReceipt = usePagePrint(receiptRef, 'Kuitansi Zakat Fitrah');
 
     const [selectedReceiptData, setSelectedReceiptData] = useState(null);
+    const [isAnnualReportMode, setIsAnnualReportMode] = useState(false);
 
 
-    // --- Signature Hook ---
+    // --- Advanced Features Logic ---
+    const [useSmartAllocation, setUseSmartAllocation] = useState(false);
+
+    // Fuzzy search for duplicate names
+    const checkDuplicateName = (name) => {
+        if (!name || name.length < 3) return null;
+        const normalizedInput = name.toLowerCase().replace(/\s+/g, '');
+
+        // Check in current year's muzaki list
+        return muzakiList.find(m => {
+            const normalizedExisting = m.nama.toLowerCase().replace(/\s+/g, '');
+            // Exact match
+            if (normalizedInput === normalizedExisting) return { ...m, matchType: 'exact' };
+
+            // Basic fuzzy match (e.g. Ahmad vs Achmad - length diff 1 and high overlap)
+            if (Math.abs(normalizedInput.length - normalizedExisting.length) <= 1) {
+                let overlap = 0;
+                for (let char of normalizedInput) {
+                    if (normalizedExisting.includes(char)) overlap++;
+                }
+                const score = overlap / Math.max(normalizedInput.length, normalizedExisting.length);
+                if (score > 0.85) return { ...m, matchType: 'fuzzy' };
+            }
+            return false;
+        });
+    };
+
+    const duplicateFound = useMemo(() => checkDuplicateName(formData.nama), [formData.nama, muzakiList, editId]);
+
     // --- Signature Hook ---
     const { leftSigner, rightSigner } = useSignatureRule(
         'zakat_fitrah',
         activeTab === 'distribusi' ? (distribusiKategori === 'Sabil' ? 'Fisabilillah' : distribusiKategori) : 'ALL',
         activeTab === 'distribusi' && distribusiScope === 'warga' ? selectedRt : 'ALL'
     );
-
     // --- Zakat Fitrah Logic ---
     const ZAKAT_RATE_KG = Number(getSetting('zakat_fitrah_kgs', '2.5'));
     const ZAKAT_RICE_PRICE = Number(getSetting('zakat_rice_price', '15000'));
@@ -137,30 +197,33 @@ const ZakatFitrah = () => {
     }, [settingsList]);
 
 
-    const handlePortionChange = (category, value) => {
+    const handlePortionChange = useCallback((category, value) => {
         if (isLocked) return;
         setAsnafPortions(prev => ({
-            ...(prev || {}),
+            ...prev,
             [category]: parseFloat(value) || 0
         }));
+    }, [isLocked, setAsnafPortions]);
+
+    const handleSaveDistributionConfig = () => {
+        // Calculate total percentage for early validation
+        const portionsData = asnafPortions || ASNAF_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {});
+        const totalPercentage = Object.values(portionsData).reduce((acc, p) => acc + (p * 0.125), 0);
+
+        if (Math.abs(totalPercentage - 1) > 0.0001) {
+            alert(`Gagal menyimpan! Total alokasi harus tepat 100% (Saat ini: ${(totalPercentage * 100).toFixed(1)}%).\n\nPastikan total "Bagian" adalah 8.0 (8 x 12.5% = 100%).`);
+            return;
+        }
+
+        setConfirmLockModal({ open: true, loading: false });
     };
 
-    const handleSaveDistributionConfig = async () => {
+    const confirmSaveLock = async () => {
         try {
-            setLoading(true);
-
-            // Calculate total percentage
-            const portionsData = asnafPortions || ASNAF_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {});
-            const totalPercentage = Object.values(portionsData).reduce((acc, p) => acc + (p * 0.125), 0);
-
-            // Validation: Must be exactly 100% (with small margin for float precision)
-            if (Math.abs(totalPercentage - 1) > 0.0001) {
-                alert(`Gagal menyimpan! Total alokasi harus tepat 100% (Saat ini: ${(totalPercentage * 100).toFixed(1)}%).\n\nPastikan total "Bagian" adalah 8.0 (8 x 12.5% = 100%).`);
-                setLoading(false);
-                return;
-            }
+            setConfirmLockModal(prev => ({ ...prev, loading: true }));
 
             // 1. Save/Update asnaf_portions
+            const portionsData = asnafPortions || ASNAF_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {});
             const portionsValue = JSON.stringify(portionsData);
 
             const existingPortions = settingsList.find(s => s.key_name === 'asnaf_portions');
@@ -194,19 +257,23 @@ const ZakatFitrah = () => {
             // Refresh settings list
             const res = await fetchSettings();
             if (res.success) setSettingsList(res.data);
+            setConfirmLockModal({ open: false, loading: false });
 
         } catch (err) {
             console.error("Failed to save distribution config:", err);
-            alert("Gagal menyimpan konfigurasi.");
+            alert(`Gagal menyimpan konfigurasi: ${err.message || 'Unknown error'}`);
         } finally {
-            setLoading(false);
+            setConfirmLockModal(prev => ({ ...prev, loading: false }));
         }
     };
 
-    const handleUnlockDistribution = async () => {
-        if (!window.confirm("Buka kunci distribusi? Anda dapat mengubah porsi kembali.")) return;
+    const handleUnlockDistribution = () => {
+        setConfirmUnlockModal({ open: true, loading: false });
+    };
+
+    const confirmUnlock = async () => {
         try {
-            setLoading(true);
+            setConfirmUnlockModal(prev => ({ ...prev, loading: true }));
             const existingLock = settingsList.find(s => s.key_name === 'lock_distribusi');
             if (existingLock) {
                 await updateSetting(existingLock.id, { ...existingLock, value: 'false' });
@@ -216,13 +283,14 @@ const ZakatFitrah = () => {
                 const res = await fetchSettings();
                 if (res.success) setSettingsList(res.data);
             } else {
-                // If setting record is missing but state was locked (e.g. initial state)
                 setIsLocked(false);
             }
+            setConfirmUnlockModal({ open: false, loading: false });
         } catch (err) {
             console.error("Failed to unlock:", err);
+            alert(`Gagal membuka kunci: ${err.message || 'Unknown error'}`);
         } finally {
-            setLoading(false);
+            setConfirmUnlockModal(prev => ({ ...prev, loading: false }));
         }
     };
 
@@ -257,7 +325,7 @@ const ZakatFitrah = () => {
             setLoading(true);
             loadConfig(); // Ensure settings are refreshed whenever data is reloaded
             // Removed fetchSettings from here to avoid blocking by large data fetches
-            const [muzakiRes, statsRes, asnafRes, rtsRes, signerRes] = await Promise.all([
+            const [muzakiRes, statsRes, asnafRes, rtsRes, distHistoryRes] = await Promise.all([
                 fetchZakatFitrahList({
                     tahun: selectedTahun,
                     per_page: 20,
@@ -265,27 +333,37 @@ const ZakatFitrah = () => {
                     search: debouncedSearch
                 }),
                 fetchMuzakiStats(selectedTahun),
-                fetchAsnafList({ per_page: 1000 }), // Fetch ALL Asnaf regardless of year
+                fetchAsnafList({ tahun: selectedTahun, per_page: 1000 }), // Fetch Asnaf for the active year
                 fetchRTs(),
-                fetchActiveSigner()
+                fetchDistribusi({ tahun: selectedTahun, per_page: 1000 })
             ]);
 
-            setMuzakiList(muzakiRes.data || []);
+            const mData = muzakiRes?.data || (Array.isArray(muzakiRes) ? muzakiRes : []);
+            setMuzakiList(mData);
+
+            const pData = muzakiRes?.current_page ? muzakiRes : {};
             setPagination({
-                current_page: muzakiRes.current_page || 1,
-                last_page: muzakiRes.last_page || 1,
-                total: muzakiRes.total || 0,
-                from: muzakiRes.from || 0,
-                to: muzakiRes.to || 0
+                current_page: pData.current_page || 1,
+                last_page: pData.last_page || 1,
+                total: pData.total || (Array.isArray(muzakiRes) ? muzakiRes.length : 0),
+                from: pData.from || 1,
+                to: pData.to || (Array.isArray(muzakiRes) ? muzakiRes.length : 0)
             });
             setStats(statsRes);
-            setAsnafList((asnafRes.data || []).map(a => ({
+            const rawAsnaf = asnafRes?.data || (Array.isArray(asnafRes) ? asnafRes : []);
+            setAsnafList(rawAsnaf.map(a => ({
                 ...a,
                 jumlahJiwa: Number(a.jumlah_jiwa || 0),
                 rt: a.rt || { kode: '??' } // Ensure rt object exists
             })));
             const uniqueRts = Array.isArray(rtsRes) ? rtsRes : (rtsRes.data || []);
             setRtList(uniqueRts);
+
+            const distData = distHistoryRes?.data || (Array.isArray(distHistoryRes) ? distHistoryRes : []);
+            if (Array.isArray(distData)) {
+                setDistribusiHistoryList(distData);
+                setZakatDistribution(distData.map(d => Number(d.asnaf_id)));
+            }
 
             // Auto-select first RT if current is invalid
             if (uniqueRts.length > 0) {
@@ -299,7 +377,27 @@ const ZakatFitrah = () => {
                 }
             }
 
-            setStrukturInti({ ketua: 'Masjid Baitulmal Kandri' });
+            setStrukturInti({ ketua: 'Masjid Baitulmal Fajar Maqbul' });
+
+            // Generate frontend audit logs from history
+            const logs = [
+                ...distData.map(d => ({
+                    action: 'Penyaluran Zakat',
+                    subject: d.asnaf?.nama || 'Unknown',
+                    amount: `${d.jumlah_kg} KG`,
+                    admin: d.creator?.name || 'Sistem',
+                    time: d.created_at,
+                    type: 'success'
+                })),
+                ...(isLocked ? [{
+                    action: 'Kunci Distribusi',
+                    subject: 'Konfigurasi Porsi',
+                    admin: 'Admin',
+                    time: new Date().toISOString(), // Mock for now if not in DB
+                    type: 'warning'
+                }] : [])
+            ].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+            setAuditLogs(logs);
 
         } catch (err) {
             console.error("Failed to load Zakat Fitrah data:", err);
@@ -326,26 +424,73 @@ const ZakatFitrah = () => {
     const totalBeras = stats?.total_beras ?? 0;
 
     // 2. Asnaf Data Aggregation (All 8 Categories) - calculated from fetched asnafList
-    const asnafStats = ASNAF_CATEGORIES.reduce((acc, category) => {
-        // Handle API Category naming differences if any
-        const filtered = asnafList.filter(a => a.kategori === category);
-        const totalJiwa = filtered.reduce((sum, item) => sum + (Number(item.jumlah_jiwa) || 0), 0);
-        return { ...acc, [category]: totalJiwa };
-    }, {});
+    // Merged with Real-time stats for instant updates
+    const asnafStats = useMemo(() => {
+        const base = ASNAF_CATEGORIES.reduce((acc, category) => {
+            const filtered = asnafList.filter(a => a.kategori === category);
+            const totalJiwa = filtered.reduce((sum, item) => sum + (Number(item.jumlah_jiwa) || 0), 0);
+            return { ...acc, [category]: totalJiwa };
+        }, {});
 
-    const totalAsnafJiwa = Object.values(asnafStats).reduce((a, b) => a + b, 0);
-    // Placeholder for distributed amount - in a real app this would be summed from distribution transaction logs
-    const totalDistributed = 0;
+        // Prefer rtStats if available for priority categories
+        if (rtStats) {
+            if (rtStats.fakir) base.Fakir = rtStats.fakir.jiwa;
+            if (rtStats.miskin) base.Miskin = rtStats.miskin.jiwa;
+            if (rtStats.amil) base.Amil = rtStats.amil.jiwa;
+        }
+
+        return base;
+    }, [asnafList, rtStats]);
+
+    const totalAsnafJiwa = useMemo(() => Object.values(asnafStats).reduce((a, b) => a + b, 0), [asnafStats]);
+    // Calculated from fetched distribution history
+    const totalDistributed = useMemo(() => Array.isArray(distribusiHistoryList)
+        ? distribusiHistoryList.reduce((acc, curr) => acc + Number(curr.jumlah_kg || 0), 0)
+        : 0, [distribusiHistoryList]);
 
     // 3. Distribution Calculation
     // Logic: 1 Portion = 12.5% (0.125) of Total Beras
     const BASE_SHARE = 0.125;
 
-    const distribution = ASNAF_CATEGORIES.map(category => {
-        const portion = (asnafPortions && asnafPortions[category]) ?? 1;
-        const percentage = portion * BASE_SHARE;
-        const jatahAsnaf = totalBeras * percentage;
-        const totalJiwa = asnafStats[category];
+    // Calculate default portion if not found
+    const getDefaultPortion = useCallback((cat) => {
+        if (cat === 'Fakir') return 2;
+        if (cat === 'Miskin') return 3;
+        if (cat === 'Amil' || cat === 'Fisabilillah') return 1;
+        return 0;
+    }, []);
+
+    // First, let's calculate total portions and percentages for proper splitting
+    const totalSelectedPortions = useMemo(() => ASNAF_CATEGORIES.reduce((acc, cat) => acc + ((asnafPortions && asnafPortions[cat]) ?? getDefaultPortion(cat)), 0), [asnafPortions, getDefaultPortion]);
+
+    const distribution = useMemo(() => ASNAF_CATEGORIES.map(category => {
+        const portion = (asnafPortions && asnafPortions[category]) ?? getDefaultPortion(category);
+        const totalJiwa = asnafStats[category] || 0;
+
+        let percentage = 0;
+        let jatahAsnaf = 0;
+
+        if (useSmartAllocation) {
+            // Smart Weight Logic:
+            // Fakir gets 2.0x, Miskin 1.5x, others 1.0x
+            const weights = { Fakir: 2.0, Miskin: 1.5 };
+            const weight = weights[category] || 1.0;
+
+            // Total weighted points = sum(weight * portion)
+            const totalWeightedPoints = ASNAF_CATEGORIES.reduce((acc, cat) => {
+                const p = (asnafPortions && asnafPortions[cat]) ?? getDefaultPortion(cat);
+                const w = weights[cat] || 1.0;
+                return acc + (p * w);
+            }, 0);
+
+            percentage = (portion * weight) / totalWeightedPoints;
+            jatahAsnaf = totalBeras * percentage;
+        } else {
+            // Standard Fixed Portion Logic
+            percentage = portion * BASE_SHARE;
+            jatahAsnaf = totalBeras * percentage;
+        }
+
         const berasPerJiwa = totalJiwa > 0 ? jatahAsnaf / totalJiwa : 0;
 
         return {
@@ -356,26 +501,26 @@ const ZakatFitrah = () => {
             jatahAsnaf,
             berasPerJiwa
         };
-    });
+    }), [asnafPortions, asnafStats, totalBeras, getDefaultPortion, useSmartAllocation]);
 
     // Helper to get beras per jiwa for a specific person based on category
-    const getBerasPerJiwa = (kategori) => {
+    const getBerasPerJiwa = useCallback((kategori) => {
         // Handle 'Sabil' mapping if necessary, or just match direct category
         const targetCat = transportCategoryName(kategori);
         const dist = distribution.find(d => d.category === targetCat);
         return dist ? dist.berasPerJiwa : 0;
-    };
+    }, [distribution]);
 
-    const transportCategoryName = (kategori) => {
+    const transportCategoryName = useCallback((kategori) => {
         if (kategori === 'Sabil') return 'Fisabilillah';
         return kategori;
-    }
+    }, []);
 
     // Filter Asnaf by selected RT for Distribusi tab
     // Filter Logic for Distribution View
     // Filter Asnaf by selected RT for Distribusi tab
     // Filter Logic for Distribution View
-    const filteredAsnafDistribusi = asnafList.filter(a => {
+    const filteredAsnafDistribusi = useMemo(() => asnafList.filter(a => {
         // API ensures we only get selectedTahun data usually, but double check
         // Note: API integration might return all if not filtered properly, but let's assume raw list for now
 
@@ -391,11 +536,11 @@ const ZakatFitrah = () => {
             // Scope 'khusus' or global views
             return a.kategori === targetKategori;
         }
-    });
+    }), [asnafList, distribusiKategori, distribusiScope, selectedRt]);
 
     // Totals for current view
-    const totalJiwaView = filteredAsnafDistribusi.reduce((acc, curr) => acc + (curr.jumlahJiwa ?? 0), 0);
-    const totalBerasView = filteredAsnafDistribusi.reduce((acc, curr) => acc + ((curr.jumlahJiwa ?? 0) * getBerasPerJiwa(curr.kategori ?? '')), 0);
+    const totalJiwaView = useMemo(() => filteredAsnafDistribusi.reduce((acc, curr) => acc + (curr.jumlahJiwa ?? 0), 0), [filteredAsnafDistribusi]);
+    const totalBerasView = useMemo(() => totalJiwaView * getBerasPerJiwa(distribusiKategori), [totalJiwaView, getBerasPerJiwa, distribusiKategori]);
 
 
     const toggleDistribusi = (id) => {
@@ -549,6 +694,55 @@ const ZakatFitrah = () => {
         setShowModal(true);
     };
 
+    const handleDeleteDistribusi = async () => {
+        const id = distDeleteModal.id;
+        if (!id) return;
+
+        setDistDeleteModal(prev => ({ ...prev, loading: true }));
+        try {
+            await deleteDistribusi(id);
+            setDistDeleteModal({ open: false, id: null, loading: false });
+            // Refresh counts and lists
+            loadData();
+            alert("Record distribusi berhasil dihapus.");
+        } catch (err) {
+            alert('Gagal menghapus record distribusi');
+            setDistDeleteModal(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const handleBulkDeleteDistribusi = async () => {
+        if (selectedHistoryIds.length === 0) return;
+
+        setBulkDistDeleteModal(prev => ({ ...prev, loading: true }));
+        try {
+            for (const id of selectedHistoryIds) {
+                await deleteDistribusi(id);
+            }
+            setBulkDistDeleteModal({ open: false, loading: false });
+            setSelectedHistoryIds([]);
+            loadData();
+            alert(`${selectedHistoryIds.length} record distribusi berhasil dihapus.`);
+        } catch (err) {
+            alert('Terjadi kesalahan saat menghapus beberapa record');
+            setBulkDistDeleteModal(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const toggleHistorySelection = (id) => {
+        setSelectedHistoryIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const toggleAllHistorySelection = () => {
+        if (selectedHistoryIds.length === distribusiHistoryList.length && distribusiHistoryList.length > 0) {
+            setSelectedHistoryIds([]);
+        } else {
+            setSelectedHistoryIds(distribusiHistoryList.map(item => item.id));
+        }
+    };
+
     const handleExport = () => {
         let dataToExport = [];
         let fileName = 'Laporan_Zakat_Fitrah';
@@ -572,7 +766,7 @@ const ZakatFitrah = () => {
                 'Jatah Per Jiwa (KG)': d.berasPerJiwa.toFixed(2)
             }));
             fileName = 'Perhitungan_Distribusi_Zakat';
-        } else {
+        } else if (activeTab === 'distribusi') {
             dataToExport = filteredAsnafDistribusi.map((a, idx) => ({
                 'No': idx + 1,
                 'Kepala Keluarga': a.nama,
@@ -583,6 +777,17 @@ const ZakatFitrah = () => {
                 'Status': distribusiStatus[a.id] ? 'Sudah' : 'Belum'
             }));
             fileName = `Distribusi_${distribusiKategori}_${distribusiScope === 'warga' ? 'RT' + selectedRt : 'Global'} `;
+        } else if (activeTab === 'distributed') {
+            dataToExport = distribusiHistoryList.map((item, idx) => ({
+                'No': idx + 1,
+                'Kepala Keluarga': item.asnaf?.nama || '-',
+                'Kategori': item.kategori_asnaf,
+                'RT': item.asnaf?.rt?.kode || '-',
+                'Jumlah Beras (KG)': Number(item.jumlah_kg).toFixed(2),
+                'Tanggal Distribusi': new Date(item.tanggal).toLocaleDateString('id-ID'),
+                'Status': 'Telah Tersalurkan'
+            }));
+            fileName = `Laporan_Distribusi_Realisasi_${selectedTahun}`;
         }
         exportToExcel(dataToExport, fileName);
     };
@@ -597,217 +802,16 @@ const ZakatFitrah = () => {
         setReceiptModal({ open: false, data: null });
     };
 
-    const ZakatFitrahPrint = () => (
-        <PrintLayout
-            title={activeTab === 'distribusi'
-                ? `Daftar Distribusi ${distribusiKategori} ${distribusiScope === 'warga' ? `RT ${selectedRt}` : '(Global)'}`
-                : activeTab === 'muzaki'
-                    ? 'Daftar Muzaki (Zakat Fitrah)'
-                    : 'Perhitungan Distribusi Zakat'}
-            subtitle={`Baitulmal Masjid Fajar Maqbul - Tahun ${selectedTahun}`}
-            signer={{ left: leftSigner, right: rightSigner }}
-        >
-            {activeTab === 'muzaki' && (
-                <>
-                    <table className="table-print-boxed">
-                        <thead>
-                            <tr>
-                                <th style={{ width: '40px' }}>No</th>
-                                <th>Nama Muzaki</th>
-                                <th style={{ width: '60px' }}>RT</th>
-                                <th style={{ width: '100px' }}>Jumlah Jiwa</th>
-                                <th style={{ width: '120px' }}>Zakat (KG)</th>
-                                <th style={{ width: '100px' }}>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {muzakiList.map((item, index) => (
-                                <tr key={item.id}>
-                                    <td style={{ textAlign: 'center' }}>{index + 1}</td>
-                                    <td>{item.nama}</td>
-                                    <td style={{ textAlign: 'center' }}>{item.rt?.kode || '-'}</td>
-                                    <td style={{ textAlign: 'center' }}>{item.jumlah_jiwa}</td>
-                                    <td style={{ textAlign: 'center' }}>{Number(item.jumlah_beras_kg).toLocaleString()} KG</td>
-                                    <td style={{ textAlign: 'center' }}>{item.status_bayar}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr style={{ fontWeight: 800, background: '#eee' }}>
-                                <td colSpan="3" style={{ textAlign: 'center' }}>Total</td>
-                                <td style={{ textAlign: 'center' }}>{totalMuzakiJiwa} Jiwa</td>
-                                <td style={{ textAlign: 'center' }}>{totalBeras.toLocaleString()} KG</td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    <div className="signature-grid">
-                        <div className="signature-item">
-                            <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmall'}</div>
-                            <div className="signature-name">{leftSigner?.nama_pejabat || '............................'}</div>
-                            {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {leftSigner.nip}</div>}
-                        </div>
-                        <div className="signature-item">
-                            <div className="signature-title">{rightSigner?.jabatan || ''}</div>
-                            <div className="signature-name">{rightSigner?.nama_pejabat || '............................'}</div>
-                            {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {rightSigner.nip}</div>}
-                        </div>
-                    </div>
-                </>
-            )}
+    const handleAnnualReportPrint = () => {
+        setIsAnnualReportMode(true);
+        // Small delay to ensure React renders the annual report content into the print ref
+        setTimeout(() => {
+            handlePrint();
+            setIsAnnualReportMode(false);
+        }, 150);
+    };
 
-            {activeTab === 'calculation' && (
-                <>
-                    <div style={{ marginBottom: '1rem', border: '1px solid #000', padding: '10px' }}>
-                        <strong>Total Beras Terkumpul:</strong> {totalBeras.toLocaleString()} KG
-                        <br />
-                        <em>Ketentuan: 1 Bagian = 12.5% dari total beras.</em>
-                    </div>
-                    <table className="table-print-boxed">
-                        <thead>
-                            <tr>
-                                <th>Kategori Asnaf</th>
-                                <th style={{ width: '100px' }}>Bagian</th>
-                                <th style={{ width: '100px' }}>Persentase</th>
-                                <th style={{ width: '100px' }}>Total Jiwa</th>
-                                <th style={{ width: '150px' }}>Jatah Beras (KG)</th>
-                                <th style={{ width: '150px' }}>Beras / Jiwa (KG)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {distribution.map((d, index) => (
-                                <tr key={index}>
-                                    <td style={{ fontWeight: 600 }}>{d.category}</td>
-                                    <td style={{ textAlign: 'center' }}>{d.portion}</td>
-                                    <td style={{ textAlign: 'center' }}>{(d.percentage * 100).toFixed(1)}%</td>
-                                    <td style={{ textAlign: 'center' }}>{d.totalJiwa}</td>
-                                    <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{d.jatahAsnaf.toLocaleString()}</td>
-                                    <td style={{ textAlign: 'center' }}>{d.berasPerJiwa.toFixed(2)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr style={{ background: '#eee', fontWeight: 'bold' }}>
-                                <td colSpan="2">TOTAL</td>
-                                <td style={{ textAlign: 'center' }}>
-                                    {(distribution.reduce((acc, curr) => acc + curr.percentage, 0) * 100).toFixed(1)}%
-                                </td>
-                                <td style={{ textAlign: 'center' }}>{totalAsnafJiwa}</td>
-                                <td style={{ textAlign: 'center' }}>{distribution.reduce((acc, curr) => acc + curr.jatahAsnaf, 0).toLocaleString()}</td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    <div className="signature-grid">
-                        <div className="signature-item">
-                            <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmall'}</div>
-                            <div className="signature-name">{leftSigner?.nama_pejabat || '............................'}</div>
-                            {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {leftSigner.nip}</div>}
-                        </div>
-                        <div className="signature-item">
-                            <div className="signature-title">{rightSigner?.jabatan || ''}</div>
-                            <div className="signature-name">{rightSigner?.nama_pejabat || '............................'}</div>
-                            {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {rightSigner.nip}</div>}
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {activeTab === 'distribusi' && (
-                <>
-                    <table className="table-print-boxed">
-                        <thead>
-                            <tr>
-                                <th style={{ width: '40px' }}>No</th>
-                                <th style={{ width: '30%' }}>Kepala Keluarga</th>
-                                <th style={{ width: '80px' }}>Jumlah Jiwa</th>
-                                <th style={{ width: '100px' }}>Zakat (KG)</th>
-                                <th>Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredAsnafDistribusi.map((item, index) => (
-                                <tr key={item.id}>
-                                    <td style={{ textAlign: 'center' }}>{index + 1}</td>
-                                    <td>{item.nama}</td>
-                                    <td style={{ textAlign: 'center' }}>{item.jumlah_jiwa || item.jumlahJiwa}</td>
-                                    <td style={{ textAlign: 'center' }}>{((item.jumlah_jiwa || item.jumlahJiwa) * getBerasPerJiwa(item.kategori)).toFixed(2)}</td>
-                                    <td></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr style={{ fontWeight: 800, background: '#eee' }}>
-                                <td colSpan="2" style={{ textAlign: 'center' }}>Total</td>
-                                <td style={{ textAlign: 'center' }}>{totalJiwaView} Jiwa</td>
-                                <td style={{ textAlign: 'center' }}>{totalBerasView.toFixed(2)} KG</td>
-                                <td style={{ textAlign: 'center' }}></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    <div className="signature-grid">
-                        <div className="signature-item">
-                            <div className="signature-title">{leftSigner?.jabatan || 'Ketua Baitulmall'}</div>
-                            <div className="signature-name">{leftSigner?.nama_pejabat || '............................'}</div>
-                            {leftSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {leftSigner.nip}</div>}
-                        </div>
-                        <div className="signature-item">
-                            <div className="signature-title">{rightSigner?.jabatan || 'Sekretaris / Bendahara'}</div>
-                            <div className="signature-name">{rightSigner?.nama_pejabat || '............................'}</div>
-                            {rightSigner?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {rightSigner.nip}</div>}
-                        </div>
-                    </div>
-                </>
-            )
-            }
-        </PrintLayout >
-    );
-
-    const MuzakiReceipt = () => (
-        <OfficialDocumentTemplate
-            title="KUITANSI ZAKAT FITRAH"
-            documentNo={`ZF/${selectedTahun}/${selectedReceiptData?.id || '000'}`}
-            signer={strukturInti?.data}
-        >
-            <div style={{ padding: '1rem 0' }}>
-                <table style={{ width: '100%', fontSize: '1.2rem', borderCollapse: 'collapse' }}>
-                    <tbody>
-                        <tr>
-                            <td style={{ width: '180px', padding: '0.5rem 0' }}>Telah Terima Dari</td>
-                            <td style={{ width: '20px' }}>:</td>
-                            <td style={{ fontWeight: 700, borderBottom: '1px dotted #000' }}>{selectedReceiptData?.nama}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ padding: '0.5rem 0' }}>Alamat / RT</td>
-                            <td>:</td>
-                            <td style={{ borderBottom: '1px dotted #000' }}>RT {selectedReceiptData?.rt?.kode}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ padding: '0.5rem 0' }}>Untuk Pembayaran</td>
-                            <td>:</td>
-                            <td style={{ borderBottom: '1px dotted #000' }}>Zakat Fitrah Tahun {selectedTahun}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ padding: '0.5rem 0' }}>Jumlah Jiwa</td>
-                            <td>:</td>
-                            <td style={{ borderBottom: '1px dotted #000' }}>{selectedReceiptData?.jumlah_jiwa} Jiwa</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div style={{ marginTop: '2.5rem', padding: '1.5rem', border: '2px solid #000', display: 'inline-block', minWidth: '250px' }}>
-                    <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Zakat Terbayar:</div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>{Number(selectedReceiptData?.jumlah_beras_kg).toLocaleString()} KG BERAS</div>
-                </div>
-
-                <div style={{ marginTop: '2rem', fontSize: '0.9rem', fontStyle: 'italic', opacity: 0.8 }}>
-                    "Semoga Allah memberikan pahala atas apa yang telah engkau berikan, dan menjadikannya pembersih bagimu, serta memberkati harta yang masih ada padamu." (Doa Amil)
-                </div>
-            </div>
-        </OfficialDocumentTemplate>
-    );
+    // Print components extracted to separate files
 
     // END Print Component Logic
 
@@ -835,7 +839,7 @@ const ZakatFitrah = () => {
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total Mustahik</div>
                             </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{totalAsnafJiwa} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Jiwa</span></div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{(totalAsnafJiwa || 0)} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Jiwa</span></div>
                         </div>
                         <div className="card stat-hover" style={{ borderLeft: '4px solid var(--warning)', padding: '1.25rem' }}>
                             <div className="d-flex align-items-center gap-3 mb-2">
@@ -853,7 +857,7 @@ const ZakatFitrah = () => {
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Telah Terdistribusi</div>
                             </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{totalDistributed.toLocaleString()} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>KG</span></div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{(totalDistributed || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>KG</span></div>
                         </div>
                     </div>
 
@@ -894,6 +898,15 @@ const ZakatFitrah = () => {
                             <button className="btn btn-ghost" onClick={loadData} disabled={loading} style={{ border: '1px solid var(--border-color)', height: '42px' }}>
                                 <RefreshCw size={16} className={loading ? 'spin' : ''} />
                             </button>
+                            <button
+                                className="btn btn-ghost"
+                                onClick={handleAnnualReportPrint}
+                                disabled={loading}
+                                style={{ border: '1px solid var(--border-color)', height: '42px', gap: '0.5rem', display: 'flex', alignItems: 'center', color: 'var(--primary)' }}
+                                title="Cetak Laporan Tahunan Terkonsolidasi"
+                            >
+                                <FileText size={16} /> <span className="d-none d-lg-inline">Laporan Tahunan</span>
+                            </button>
                             <button className="btn btn-ghost" onClick={handlePrint} disabled={loading} style={{ border: '1px solid var(--border-color)', height: '42px' }}>
                                 <Printer size={16} />
                             </button>
@@ -905,588 +918,224 @@ const ZakatFitrah = () => {
                 </div>
             </div>
 
-            {activeTab === 'muzaki' && (
-                <div className="glass-card" style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.02)', marginBottom: '1.5rem', border: '1px solid var(--border-color)' }}>
-                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1.2fr 1.5fr auto auto', gap: '1.25rem', alignItems: 'end' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Nama Muzaki</label>
-                            <input type="text" className="input" style={{ height: '40px', width: '100%' }} value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} placeholder="Nama Lengkap" required />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Jiwa</label>
-                            <input type="number" className="input" style={{ height: '40px', width: '100%', textAlign: 'center', fontWeight: 700 }} value={formData.jumlahJiwa} onChange={e => setFormData({ ...formData, jumlahJiwa: e.target.value })} required min="1" />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Beras (Kg)</label>
-                            <div className="input d-flex align-items-center justify-content-center" style={{ height: '40px', width: '100%', fontWeight: 800, color: 'var(--primary)', background: 'rgba(0,0,0,0.03)' }}>
-                                {(Number(formData.jumlahJiwa || 0) * 2.5).toFixed(1)}
+
+            <div className="glass-card" style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.02)', marginBottom: '1rem', border: '1px solid var(--border-color)' }}>
+                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }} style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1.2fr 1.5fr auto auto', gap: '1.25rem', alignItems: 'end' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Nama Muzaki</label>
+                        <input type="text" className="input" style={{ height: '40px', width: '100%', borderColor: (duplicateFound && duplicateFound.id !== editId) ? (duplicateFound.matchType === 'exact' ? 'var(--danger)' : '#f59e0b') : 'var(--border-color)' }} value={formData.nama} onChange={e => setFormData({ ...formData, nama: e.target.value })} placeholder="Nama Lengkap" required />
+                        {duplicateFound && duplicateFound.id !== editId && (
+                            <div style={{ color: duplicateFound.matchType === 'exact' ? 'var(--danger)' : '#f59e0b', fontSize: '0.65rem', marginTop: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <AlertCircle size={10} />
+                                {duplicateFound.matchType === 'exact' ? `Duplikat di RT ${duplicateFound.rt?.kode}` : `Mirip dengan ${duplicateFound.nama} (RT ${duplicateFound.rt?.kode})`}
                             </div>
+                        )}
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Jiwa</label>
+                        <input type="number" className="input" style={{ height: '40px', width: '100%', textAlign: 'center', fontWeight: 700, borderColor: Number(formData.jumlahJiwa) > 8 ? '#f59e0b' : 'var(--border-color)' }} value={formData.jumlahJiwa} onChange={e => setFormData({ ...formData, jumlahJiwa: e.target.value })} required min="1" />
+                        {Number(formData.jumlahJiwa) > 8 && (
+                            <div style={{ color: '#f59e0b', fontSize: '0.65rem', marginTop: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <AlertCircle size={10} /> Ukuran Keluarga Tidak Wajar ({'>'}8)
+                            </div>
+                        )}
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Beras (Kg)</label>
+                        <div className="input d-flex align-items-center justify-content-center" style={{ height: '40px', width: '100%', fontWeight: 800, color: 'var(--primary)', background: 'rgba(0,0,0,0.03)' }}>
+                            {(Number(formData.jumlahJiwa || 0) * 2.5).toFixed(1)}
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Wilayah / RT</label>
-                            <select className="input" style={{ height: '40px', width: '100%', fontWeight: 600 }} value={formData.rt} onChange={e => setFormData({ ...formData, rt: e.target.value })}>
-                                {rtList.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
-                            </select>
-                        </div>
-                        <button type="submit" className="btn btn-primary">
-                            <Plus size={18} /> SIMPAN
-                        </button>
-                        <button type="button" className="btn btn-outline-danger" onClick={() => setFormData({ nama: '', rt: '01', jumlahJiwa: '', status: 'Lunas', tahun: selectedTahun })}>
-                            RESET
-                        </button>
-                    </form>
-                </div>
-            )}
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem', display: 'block' }}>Wilayah / RT</label>
+                        <select className="input" style={{ height: '40px', width: '100%', fontWeight: 600 }} value={formData.rt} onChange={e => setFormData({ ...formData, rt: e.target.value })}>
+                            {rtList.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
+                        </select>
+                    </div>
+                    <button type="submit" className="btn btn-primary">
+                        <Plus size={18} /> SIMPAN
+                    </button>
+                    <button type="button" className="btn btn-outline-danger" onClick={() => setFormData({ ...formData, nama: '', jumlahJiwa: '', rt: '01' })}>
+                        RESET
+                    </button>
+                </form>
+            </div>
 
             <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.01)' }}>
-                    {['muzaki', 'calculation', 'distribusi', 'distributed'].map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            style={{
-                                padding: '1.25rem 2rem',
-                                background: 'none',
-                                border: 'none',
-                                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
-                                borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
-                                cursor: 'pointer',
-                                fontWeight: 800,
-                                fontSize: '0.75rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: '1.5px',
-                                transition: 'all 0.3s ease'
-                            }}
-                        >
-                            {tab === 'muzaki' ? 'DATA MUZAKI' : tab === 'calculation' ? 'KALKULASI' : tab === 'distribusi' ? 'DISTRIBUSI RT' : 'HISTORY'}
-                        </button>
-                    ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.01)', paddingRight: '1.25rem' }}>
+                    <div style={{ display: 'flex' }}>
+                        {['muzaki', 'calculation', 'distribusi', 'distributed', 'log'].map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                style={{
+                                    padding: '1.25rem 2rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                                    borderBottom: activeTab === tab ? '3px solid var(--primary)' : '3px solid transparent',
+                                    cursor: 'pointer',
+                                    fontWeight: 800,
+                                    fontSize: '0.75rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1.5px',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                {tab === 'muzaki' ? 'DATA MUZAKI' : tab === 'calculation' ? 'KALKULASI' : tab === 'distribusi' ? 'DISTRIBUSI RT' : tab === 'distributed' ? 'HISTORY' : 'AUDIT LOG'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {activeTab === 'muzaki' && (
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Cari Nama Muzaki..."
+                                className="input pr-4 py-2 text-sm w-64"
+                                style={{ height: '38px', paddingLeft: '45px', background: 'var(--input-bg)', borderColor: 'var(--border-color)' }}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" style={{ pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2 top-2 text-muted hover:text-danger"
+                                    style={{ background: 'none', border: 'none', padding: '4px' }}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="table-container" style={{ margin: 0, border: 'none', borderRadius: 0 }}>
                     {activeTab === 'muzaki' && (
-                        <>
-                            <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center bg-[rgba(0,0,0,0.01)]">
-                                <div className="text-sm text-muted">
-                                    Menampilkan {pagination.from || 0} - {pagination.to || 0} dari {pagination.total || 0} data
-                                </div>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Cari Nama Muzaki..."
-                                        className="input pr-4 py-2 text-sm w-64"
-                                        style={{ height: '38px', paddingLeft: '45px' }} // Forced padding to prevent overlap
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" style={{ pointerEvents: 'none' }}>
-                                        <Search size={16} />
-                                    </div>
-                                    {searchQuery && (
-                                        <button
-                                            onClick={() => setSearchQuery('')}
-                                            className="absolute right-2 top-2 text-muted hover:text-danger"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="table-compact w-full">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: '60px' }}>NO</th>
-                                            <th>Nama Muzaki</th>
-                                            <th>RT</th>
-                                            <th style={{ textAlign: 'center' }}>Jiwa</th>
-                                            <th>Jumlah Beras</th>
-                                            <th>Status</th>
-                                            <th>Timestamp</th>
-                                            <th style={{ width: '150px', textAlign: 'center' }}>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading ? (
-                                            <tr><td colSpan="8" className="text-center py-8"><Loader2 className="spin" /></td></tr>
-                                        ) : muzakiList.map((m, index) => (
-                                            <tr key={m.id}>
-                                                <td>{index + 1}</td>
-                                                <td style={{ fontWeight: 700, color: 'var(--text-main)' }}>{m.nama}</td>
-                                                <td><span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.75rem' }}>RT {m.rt?.kode || '-'}</span></td>
-                                                <td style={{ textAlign: 'center', fontWeight: 600 }}>{m.jumlah_jiwa}</td>
-                                                <td style={{ fontWeight: 800, color: 'var(--primary)' }}>{Number(m.jumlah_beras_kg).toLocaleString()} KG</td>
-                                                <td>
-                                                    <div className="status-indicator">
-                                                        <div className="dot dot-success"></div>
-                                                        <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.75rem' }}>VERIFIED</span>
-                                                    </div>
-                                                </td>
-                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                    {m.created_at ? new Date(m.created_at).toLocaleDateString('id-ID') : '-'}
-                                                </td>
-                                                <td>
-                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                                        <button className="btn btn-ghost" style={{ padding: '0.4rem', color: 'var(--primary)' }} onClick={() => handleOpenReceipt(m)} title="Cetak Kuitansi"><Printer size={14} /></button>
-                                                        <button className="btn btn-ghost" style={{ padding: '0.4rem' }} onClick={() => handleEdit(m)}><Edit2 size={14} /></button>
-                                                        <button className="btn btn-ghost" style={{ padding: '0.4rem', color: 'var(--danger)' }} onClick={() => handleDeleteClick(m.id)} title="Hapus"><Trash2 size={14} /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Pagination Controls */}
-                            {pagination.last_page > 1 && (
-                                <div className="flex justify-between items-center p-4 border-t border-[var(--border-color)] bg-[rgba(0,0,0,0.01)]">
-                                    <span className="text-xs text-muted">
-                                        Halaman {pagination.current_page} dari {pagination.last_page}
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                                            disabled={page === 1 || loading}
-                                            className="px-3 py-1 text-xs rounded border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--border-color)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Sebelumnya
-                                        </button>
-                                        <button
-                                            onClick={() => setPage(prev => Math.min(prev + 1, pagination.last_page))}
-                                            disabled={page === pagination.last_page || loading}
-                                            className="px-3 py-1 text-xs rounded border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--border-color)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Selanjutnya
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                        <MuzakiTab
+                            muzakiList={muzakiList}
+                            pagination={pagination}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            page={page}
+                            setPage={setPage}
+                            loading={loading}
+                            handleOpenReceipt={handleOpenReceipt}
+                            handleEdit={handleEdit}
+                            handleDeleteClick={handleDeleteClick}
+                            canDeleteMuzaki={canDeleteMuzaki}
+                            formData={formData}
+                            setFormData={setFormData}
+                            handleSubmit={handleSubmit}
+                            editId={editId}
+                            rtList={rtList}
+                        />
                     )}
 
-
-
-                    {/* Calculation Tab */}
                     {activeTab === 'calculation' && (
-                        <div className="table-container">
-                            <div style={{
-                                marginBottom: '1.5rem',
-                                padding: '1rem',
-                                background: isLocked ? 'rgba(16, 185, 129, 0.05)' : 'rgba(59, 130, 246, 0.1)',
-                                borderRadius: '8px',
-                                borderLeft: isLocked ? '4px solid var(--success)' : '4px solid var(--primary)',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.5rem 1rem', color: isLocked ? 'var(--success)' : 'var(--primary)' }}>
-                                        Total Beras Terkumpul: {totalBeras.toLocaleString()} KG
-                                        {isLocked && <span style={{ marginLeft: '1rem', fontSize: '0.75rem', background: 'var(--success)', color: '#fff', padding: '2px 8px', borderRadius: '4px' }}>TERKUNCI</span>}
-                                    </h4>
-                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                        Setting distribusi untuk 8 Asnaf. <b>1 Bagian = 12.5%</b> dari total beras.
-                                    </p>
-                                </div>
-                                <div>
-                                    {isLocked ? (
-                                        <button className="btn btn-ghost" onClick={handleUnlockDistribution} style={{ color: 'var(--text-muted)' }}>
-                                            Buka Kunci
-                                        </button>
-                                    ) : (
-                                        <button className="btn btn-primary" onClick={handleSaveDistributionConfig} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                            <Save size={16} /> Simpan & Kunci
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            <table className="table-compact">
-                                <thead>
-                                    <tr>
-                                        <th>Kategori Asnaf</th>
-                                        <th style={{ width: '150px' }}>Bagian (1 = 12.5%)</th>
-                                        <th>Persentase</th>
-                                        <th>Total Jiwa</th>
-                                        <th style={{ textAlign: 'center' }}>Total (KG)</th>
-                                        <th style={{ textAlign: 'center' }}>/Jiwa (KG)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {distribution.map((d, index) => (
-                                        <tr key={index}>
-                                            <td style={{ fontWeight: 600 }}>{d.category}</td>
-                                            <td>
-                                                <input
-                                                    type="number"
-                                                    value={d.portion}
-                                                    onChange={(e) => handlePortionChange(d.category, e.target.value)}
-                                                    min="0"
-                                                    step="0.1"
-                                                    disabled={isLocked}
-                                                    className="input"
-                                                    style={{
-                                                        width: '70px',
-                                                        padding: '0.2rem 0.5rem',
-                                                        backgroundColor: isLocked ? 'rgba(0,0,0,0.1)' : 'var(--card-bg)',
-                                                        color: isLocked ? 'var(--text-muted)' : 'var(--text-main)',
-                                                        border: '1px solid var(--border-color)',
-                                                        cursor: isLocked ? 'not-allowed' : 'text'
-                                                    }}
-                                                />
-                                            </td>
-                                            <td>{(d.percentage * 100).toFixed(1)}%</td>
-                                            <td>{d.totalJiwa}</td>
-                                            <td style={{ fontWeight: 800, color: 'var(--primary)', textAlign: 'center' }}>{d.jatahAsnaf.toLocaleString()}</td>
-                                            <td style={{ fontWeight: 800, textAlign: 'center' }}>{d.berasPerJiwa.toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                    <tr style={{
-                                        fontWeight: 'bold',
-                                        background: 'rgba(0,0,0,0.2)',
-                                        color: Math.abs(distribution.reduce((acc, curr) => acc + curr.percentage, 0) - 1) > 0.0001 ? 'var(--danger)' : 'inherit'
-                                    }}>
-                                        <td colSpan="2">TOTAL</td>
-                                        <td style={{ color: Math.abs(distribution.reduce((acc, curr) => acc + curr.percentage, 0) - 1) > 0.0001 ? 'var(--danger)' : 'var(--success)' }}>
-                                            {(distribution.reduce((acc, curr) => acc + curr.percentage, 0) * 100).toFixed(1)}%
-                                        </td>
-                                        <td>{totalAsnafJiwa}</td>
-                                        <td style={{ textAlign: 'center' }}>{distribution.reduce((acc, curr) => acc + curr.jatahAsnaf, 0).toLocaleString()}</td>
-                                        <td></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <CalculationTab
+                            totalBeras={totalBeras}
+                            isLocked={isLocked}
+                            distribution={distribution}
+                            totalAsnafJiwa={totalAsnafJiwa}
+                            handlePortionChange={handlePortionChange}
+                            handleUnlockDistribution={handleUnlockDistribution}
+                            handleSaveDistributionConfig={handleSaveDistributionConfig}
+                            canEditConfig={canEditConfig}
+                            useSmartAllocation={useSmartAllocation}
+                            setUseSmartAllocation={setUseSmartAllocation}
+                        />
                     )}
 
                     {activeTab === 'distribusi' && (
-                        <div style={{ marginBottom: '1.5rem' }} className="animate-fade-in">
-                            {/* Scope Selector */}
-                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                                <button
-                                    className={`btn ${distribusiScope === 'warga' ? 'btn-primary' : 'btn-ghost'} `}
-                                    onClick={() => { setDistribusiScope('warga'); setDistribusiKategori('Fakir'); }}
-                                    style={{ flex: 1 }}
-                                >
-                                    <Users size={16} style={{ marginRight: '0.5rem' }} /> Warga (Per RT)
-                                </button>
-                                <button
-                                    className={`btn ${distribusiScope === 'khusus' ? 'btn-primary' : 'btn-ghost'} `}
-                                    onClick={() => { setDistribusiScope('khusus'); setDistribusiKategori('Amil'); }}
-                                    style={{ flex: 1 }}
-                                >
-                                    <CheckCircle size={16} style={{ marginRight: '0.5rem' }} /> Khusus (Amil & Sabil)
-                                </button>
-                            </div>
-
-                            {/* Filters Bar */}
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'var(--card-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--card-border)' }}>
-
-                                {/* RT Selector - Only for Warga */}
-                                {distribusiScope === 'warga' && (
-                                    <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Filter size={16} className="text-muted" />
-                                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>RT:</span>
-                                            <select
-                                                className="input"
-                                                style={{ width: '80px', padding: '0.5rem' }}
-                                                value={selectedRt}
-                                                onChange={(e) => setSelectedRt(e.target.value)}
-                                            >
-                                                {rtList.map(rt => (
-                                                    <option key={rt.kode} value={rt.kode}>{rt.kode}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div style={{ width: '1px', height: '24px', background: 'var(--card-border)' }}></div>
-                                    </>
-                                )}
-
-                                {/* Category Selector */}
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    {distribusiScope === 'warga' ? (
-                                        <>
-                                            <button
-                                                onClick={() => setDistribusiKategori('Fakir')}
-                                                style={{
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '20px',
-                                                    border: '1px solid var(--primary)',
-                                                    background: distribusiKategori === 'Fakir' ? 'var(--primary)' : 'transparent',
-                                                    color: distribusiKategori === 'Fakir' ? '#fff' : 'var(--primary)',
-                                                    cursor: 'pointer', fontSize: '0.85rem'
-                                                }}
-                                            >Fakir</button>
-                                            <button
-                                                onClick={() => setDistribusiKategori('Miskin')}
-                                                style={{
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '20px',
-                                                    border: '1px solid var(--primary)',
-                                                    background: distribusiKategori === 'Miskin' ? 'var(--primary)' : 'transparent',
-                                                    color: distribusiKategori === 'Miskin' ? '#fff' : 'var(--primary)',
-                                                    cursor: 'pointer', fontSize: '0.85rem'
-                                                }}
-                                            >Miskin</button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={() => setDistribusiKategori('Amil')}
-                                                style={{
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '20px',
-                                                    border: '1px solid var(--primary)',
-                                                    background: distribusiKategori === 'Amil' ? 'var(--primary)' : 'transparent',
-                                                    color: distribusiKategori === 'Amil' ? '#fff' : 'var(--primary)',
-                                                    cursor: 'pointer', fontSize: '0.85rem'
-                                                }}
-                                            >Amil</button>
-                                            <button
-                                                onClick={() => setDistribusiKategori('Fisabilillah')} // Internal name
-                                                style={{
-                                                    padding: '0.25rem 0.75rem',
-                                                    borderRadius: '20px',
-                                                    border: '1px solid var(--primary)',
-                                                    background: distribusiKategori === 'Fisabilillah' ? 'var(--primary)' : 'transparent',
-                                                    color: distribusiKategori === 'Fisabilillah' ? '#fff' : 'var(--primary)',
-                                                    cursor: 'pointer', fontSize: '0.85rem'
-                                                }}
-                                            >Sabilillah</button>
-                                        </>
-                                    )}
-                                </div>
-
-                                <span style={{ marginLeft: 'auto', fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <span>
-                                        <strong>{filteredAsnafDistribusi.length}</strong> KK | <strong>{totalJiwaView}</strong> Jiwa | <strong style={{ color: 'var(--primary)' }}>{totalBerasView.toFixed(2)} KG</strong>
-                                    </span>
-                                    {Object.values(distribusiStatus).some(Boolean) && (
-                                        <button
-                                            className="btn btn-primary"
-                                            style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
-                                            onClick={confirmDistribution}
-                                        >
-                                            Konfirmasi Masuk Data
-                                        </button>
-                                    )}
-                                </span>
-                            </div>
-
-                            {/* Table */}
-                            <table className="table-compact" style={{ marginTop: '1rem' }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '60px' }}>NO</th>
-                                        <th>Kepala Keluarga</th>
-                                        <th>Kategori</th>
-                                        {distribusiScope === 'khusus' && <th>Asal RT</th>}
-                                        <th style={{ textAlign: 'center' }}>Jiwa</th>
-                                        <th style={{ textAlign: 'center' }}>Jatah (KG)</th>
-                                        <th style={{ textAlign: 'center' }}>Total (KG)</th>
-                                        <th style={{ width: '180px' }}>
-                                            Status
-                                            <button
-                                                onClick={handleCheckAll}
-                                                style={{
-                                                    marginLeft: '12px',
-                                                    border: 'none',
-                                                    background: 'transparent',
-                                                    cursor: 'pointer',
-                                                    color: filteredAsnafDistribusi.length > 0 && filteredAsnafDistribusi.every(item => distribusiStatus[item.id]) ? 'var(--primary)' : 'var(--text-muted)'
-                                                }}
-                                                title="Check All"
-                                            >
-                                                {filteredAsnafDistribusi.length > 0 && filteredAsnafDistribusi.every(item => distribusiStatus[item.id])
-                                                    ? <CheckCircle size={16} />
-                                                    : <Circle size={16} />
-                                                }
-                                            </button>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredAsnafDistribusi.map((item, index) => {
-                                        const perJiwa = getBerasPerJiwa(item.kategori);
-                                        const totalTerima = item.jumlahJiwa * perJiwa;
-                                        const isDistributed = (Array.isArray(zakatDistribution) ? zakatDistribution : []).includes(item.id);
-                                        const isSelected = !!distribusiStatus[item.id];
-
-                                        return (
-                                            <tr key={item.id} style={{ opacity: isDistributed ? 0.6 : 1 }}>
-                                                <td>{index + 1}</td>
-                                                <td style={{ fontWeight: 600 }}>{item.nama}</td>
-                                                <td>
-                                                    <span style={{
-                                                        padding: '2px 10px',
-                                                        borderRadius: '4px',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        fontSize: '0.75rem',
-                                                        color: 'var(--text-muted)',
-                                                        border: '1px solid var(--border-color)'
-                                                    }}>
-                                                        {item.kategori === 'Fisabilillah' ? 'Sabil' : item.kategori}
-                                                    </span>
-                                                </td>
-                                                {distribusiScope === 'khusus' && <td>RT {item.rt?.kode || '-'}</td>}
-                                                <td style={{ textAlign: 'center' }}>{item.jumlahJiwa}</td>
-                                                <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{perJiwa.toFixed(2)}</td>
-                                                <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary)' }}>
-                                                    {totalTerima.toFixed(2)}
-                                                </td>
-                                                <td>
-                                                    {isDistributed ? (
-                                                        <div className="status-indicator">
-                                                            <div className="dot dot-success"></div>
-                                                            <span style={{ color: 'var(--success)' }}>Tersalurkan</span>
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            className="btn btn-ghost"
-                                                            style={{
-                                                                padding: '0.4rem 0.5rem',
-                                                                color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '0.5rem',
-                                                                fontSize: '0.85rem'
-                                                            }}
-                                                            onClick={() => toggleDistribusi(item.id)}
-                                                        >
-                                                            {isSelected ? <CheckCircle size={16} /> : <Circle size={16} />}
-                                                            <span style={{ fontWeight: isSelected ? 700 : 400 }}>{isSelected ? 'Siap Konfirm' : 'Belum'}</span>
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DistributionTab
+                            distribusiScope={distribusiScope}
+                            setDistribusiScope={setDistribusiScope}
+                            distribusiKategori={distribusiKategori}
+                            setDistribusiKategori={setDistribusiKategori}
+                            selectedRt={selectedRt}
+                            setSelectedRt={setSelectedRt}
+                            rtList={rtList}
+                            filteredAsnafDistribusi={filteredAsnafDistribusi}
+                            totalJiwaView={totalJiwaView}
+                            totalBerasView={totalBerasView}
+                            distribusiStatus={distribusiStatus}
+                            confirmDistribution={confirmDistribution}
+                            handleCheckAll={handleCheckAll}
+                            getBerasPerJiwa={getBerasPerJiwa}
+                            zakatDistribution={zakatDistribution}
+                            toggleDistribusi={toggleDistribusi}
+                            canConfirmDist={canConfirmDist}
+                        />
                     )}
 
-                    {/* Distributed Tab */}
                     {activeTab === 'distributed' && (
-                        <div className="table-container">
-                            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--success)' }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--success)' }}>Laporan Distribusi Realisasi</h4>
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                                    Data beras yang telah diserahterimakan kepada Mustahik.
-                                </p>
+                        <HistoryTab
+                            distribusiHistoryList={distribusiHistoryList}
+                            selectedHistoryIds={selectedHistoryIds}
+                            toggleHistorySelection={toggleHistorySelection}
+                            toggleAllHistorySelection={toggleAllHistorySelection}
+                            setBulkDistDeleteModal={setBulkDistDeleteModal}
+                            setDistDeleteModal={setDistDeleteModal}
+                            canDeleteMuzaki={canDeleteMuzaki}
+                        />
+                    )}
+
+                    {activeTab === 'log' && (
+                        <div style={{ padding: '2rem' }}>
+                            <div className="d-flex align-items-center gap-3 mb-4" style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
+                                <Shield className="text-primary" />
+                                <div>
+                                    <h4 style={{ margin: 0, color: 'var(--text-main)' }}>Chain of Custody</h4>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Rekam jejak digital seluruh aktivitas kritial penyaluran zakat tahun {selectedTahun}.</p>
+                                </div>
                             </div>
-                            <table className="table-compact">
-                                <thead>
-                                    <tr>
-                                        <th className="col-no">NO</th>
-                                        <th>Nama Penerima</th>
-                                        <th>Kategori</th>
-                                        <th>RT</th>
-                                        <th>Jumlah Beras</th>
-                                        <th>Tanggal Distribusi</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colSpan="7" className="text-center p-4" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                            Belum ada data distribusi yang tercatat.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {Array.isArray(auditLogs) && auditLogs.length > 0 ? auditLogs.map((log, i) => (
+                                    <div key={i} className="glass-card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                            <div style={{
+                                                width: '10px',
+                                                height: '10px',
+                                                borderRadius: '50%',
+                                                background: log.type === 'success' ? 'var(--success)' : log.type === 'warning' ? 'var(--warning)' : 'var(--primary)'
+                                            }}></div>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{log.action}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Subjek: {log.subject} {log.amount ? `(${log.amount})` : ''}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{log.admin}</div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{log.time ? new Date(log.time).toLocaleString('id-ID') : '-'}</div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="text-center py-5 text-muted">Belum ada aktivitas yang tercatat.</div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
 
-            {/* Muzaki Modal */}
-            {
-                showModal && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                        <div className="glass-card" style={{ width: '100%', maxWidth: '450px' }}>
-                            <h2 style={{ marginBottom: '1.5rem' }}>{editId ? 'Edit Data Muzaki' : 'Tambah Data Muzaki'}</h2>
-                            <form onSubmit={handleSubmit}>
-                                <div className="form-group">
-                                    <label className="label">Nama Muzaki</label>
-                                    <input
-                                        className="input"
-                                        value={formData.nama}
-                                        onChange={e => setFormData({ ...formData, nama: e.target.value })}
-                                        placeholder="Nama Lengkap"
-                                        required
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="label">Tahun (Otomatis)</label>
-                                    <input
-                                        className="input"
-                                        value={formData.tahun}
-                                        readOnly
-                                        disabled
-                                        style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="label">Jumlah Jiwa</label>
-                                    <input
-                                        type="number"
-                                        className="input"
-                                        value={formData.jumlahJiwa}
-                                        onChange={e => setFormData({ ...formData, jumlahJiwa: e.target.value })}
-                                        placeholder="Jumlah anggota keluarga"
-                                        required
-                                        min="1"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="label">Jumlah Beras (Otomatis)</label>
-                                    <input
-                                        type="text"
-                                        className="input"
-                                        value={formData.jumlahJiwa ? `${(Number(formData.jumlahJiwa) * ZAKAT_RATE_KG).toFixed(1)} KG` : '0 KG'}
-                                        disabled
-                                        style={{ background: 'var(--card-bg)', color: 'var(--primary)', fontWeight: 700 }}
-                                    />
-                                    <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Rumus: Jumlah Jiwa × {ZAKAT_RATE_KG} KG</small>
-                                </div>
-                                <div className="form-group">
-                                    <label className="label">Asal RT</label>
-                                    <select
-                                        className="input"
-                                        value={formData.rt}
-                                        onChange={e => setFormData({ ...formData, rt: e.target.value })}
-                                    >
-                                        {rtList.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="label">Status Pembayaran</label>
-                                    <select
-                                        className="input"
-                                        value={formData.status}
-                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                    >
-                                        <option value="Lunas">Lunas</option>
-                                        <option value="Belum Lunas">Belum Lunas</option>
-                                    </select>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                    <button type="button" className="btn btn-outline-danger" style={{ flex: 1 }} onClick={closeModal}>
-                                        BATAL
-                                    </button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1.5 }}>
-                                        SIMPAN DATA
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )
-            }
+            {/* Muzaki Modal Extracted */}
+            <MuzakiFormModal
+                isOpen={showModal}
+                onClose={closeModal}
+                onSubmit={handleSubmit}
+                formData={formData}
+                setFormData={setFormData}
+                editId={editId}
+                rtList={rtList}
+                zakatRateKg={ZAKAT_RATE_KG}
+                isLocked={isLocked}
+            />
             {/* Distributed Tab */}
 
 
@@ -1506,7 +1155,7 @@ const ZakatFitrah = () => {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', lineHeight: 1.6 }}>
                                 <div style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
                                     <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary)' }}>Kenapa Fakir 37,5% dan Miskin 37,5%?</h4>
-                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>Penjelasan resmi mengenai kebijakan pembagian zakat fitrah.</p>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Penjelasan resmi mengenai kebijakan pembagian zakat fitrah.</p>
                                 </div>
 
                                 <div>
@@ -1600,18 +1249,37 @@ const ZakatFitrah = () => {
                                 <button
                                     className="btn btn-primary"
                                     style={{ flex: 1 }}
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setConfirmDistModal(prev => ({ ...prev, loading: true }));
                                         const selectedIds = Object.keys(distribusiStatus).filter(id => distribusiStatus[id]);
-                                        const currentDist = Array.isArray(zakatDistribution) ? zakatDistribution : [];
-                                        const newDistribution = [...new Set([...currentDist.map(Number), ...selectedIds.map(Number)])];
 
-                                        setTimeout(() => {
-                                            setZakatDistribution(newDistribution);
+                                        // Prepare payload
+                                        const payload = selectedIds.map(id => {
+                                            const item = filteredAsnafDistribusi.find(a => a.id == id);
+                                            if (!item) {
+                                                console.error(`Asnaf ID ${id} not found in filtered list during confirmation`);
+                                                return null;
+                                            }
+                                            return {
+                                                asnaf_id: item.id,
+                                                kategori_asnaf: item.kategori,
+                                                jumlah_kg: item.jumlahJiwa * getBerasPerJiwa(item.kategori),
+                                                tahun: selectedTahun,
+                                                tanggal: new Date().toISOString().split('T')[0],
+                                                status: 'distributed'
+                                            };
+                                        }).filter(Boolean);
+
+                                        try {
+                                            await saveDistribusi({ distributions: payload });
                                             setDistribusiStatus({});
                                             setConfirmDistModal({ open: false, loading: false });
                                             alert("Penyaluran berhasil dikonfirmasi!");
-                                        }, 600);
+                                            loadData();
+                                        } catch (err) {
+                                            alert("Terjadi kesalahan saat menyimpan distribusi");
+                                            setConfirmDistModal(prev => ({ ...prev, loading: false }));
+                                        }
                                     }}
                                     disabled={confirmDistModal.loading}
                                 >
@@ -1665,13 +1333,71 @@ const ZakatFitrah = () => {
                 onCancel={() => setDeleteModal({ open: false, id: null, loading: false })}
                 loading={deleteModal.loading}
             />
+            <ConfirmDeleteModal
+                open={distDeleteModal.open}
+                onConfirm={handleDeleteDistribusi}
+                onCancel={() => setDistDeleteModal({ open: false, id: null, loading: false })}
+                loading={distDeleteModal.loading}
+                title="Hapus Data Distribusi"
+                message="Apakah Anda yakin ingin menghapus data distribusi ini? Status mustahik ini akan kembali menjadi 'Belum Disalurkan'."
+            />
+            <ConfirmDeleteModal
+                open={bulkDistDeleteModal.open}
+                onConfirm={handleBulkDeleteDistribusi}
+                onCancel={() => setBulkDistDeleteModal({ open: false, loading: false })}
+                loading={bulkDistDeleteModal.loading}
+                title="Hapus Masal Record Distribusi"
+                message={`Anda akan menghapus ${selectedHistoryIds.length} record distribusi secara masal. Status mustahik terkait akan kembali menjadi 'Belum Disalurkan'. Lanjutkan?`}
+            />
+            <ZakatConfirmModal
+                open={confirmLockModal.open}
+                type="lock"
+                title="Simpan & Kunci Distribusi?"
+                description="Simpan porsi asnaf saat ini dan kunci tabel perhitungan untuk melanjutkan ke tahap penyaluran."
+                onConfirm={confirmSaveLock}
+                onCancel={() => setConfirmLockModal({ open: false, loading: false })}
+                loading={confirmLockModal.loading}
+            />
+            <ZakatConfirmModal
+                open={confirmUnlockModal.open}
+                type="unlock"
+                title="Buka Kunci Distribusi?"
+                description="Membuka kunci memungkinkan Anda untuk mengubah kembali porsi asnaf. Gunakan jika ada perubahan skema alokasi."
+                onConfirm={confirmUnlock}
+                onCancel={() => setConfirmUnlockModal({ open: false, loading: false })}
+                loading={confirmUnlockModal.loading}
+            />
             {/* Hidden Print Container */}
             <div className="print-only">
                 <div ref={printRef}>
-                    <ZakatFitrahPrint />
+                    <ZakatFitrahPrint
+                        activeTab={isAnnualReportMode ? 'annual_report' : activeTab}
+                        distribusiKategori={distribusiKategori}
+                        distribusiScope={distribusiScope}
+                        selectedRt={selectedRt}
+                        selectedTahun={selectedTahun}
+                        leftSigner={leftSigner}
+                        rightSigner={rightSigner}
+                        muzakiList={muzakiList}
+                        totalMuzakiJiwa={totalMuzakiJiwa}
+                        totalBeras={totalBeras}
+                        distribution={distribution}
+                        totalAsnafJiwa={totalAsnafJiwa}
+                        filteredAsnafDistribusi={filteredAsnafDistribusi}
+                        getBerasPerJiwa={getBerasPerJiwa}
+                        totalJiwaView={totalJiwaView}
+                        totalBerasView={totalBerasView}
+                        distribusiHistoryList={distribusiHistoryList}
+                    />
                 </div>
                 <div ref={receiptRef}>
-                    {selectedReceiptData && <MuzakiReceipt />}
+                    {selectedReceiptData && (
+                        <MuzakiReceipt
+                            selectedTahun={selectedTahun}
+                            selectedReceiptData={selectedReceiptData}
+                            strukturInti={strukturInti}
+                        />
+                    )}
                 </div>
             </div>
         </div>

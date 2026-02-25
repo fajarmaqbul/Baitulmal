@@ -12,7 +12,8 @@ import {
     Map,
     Box,
     ArrowLeftRight,
-    ShoppingBag
+    ShoppingBag,
+    Globe
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -25,10 +26,9 @@ const Sidebar = () => {
         { name: 'Santunan', icon: <ShieldCheck size={20} />, path: '/santunan' },
         { name: 'Zakat Mall', icon: <Coins size={20} />, path: '/zakat-mall' },
         { name: 'Manajemen Asnaf', icon: <Users size={20} />, path: '/asnaf' },
-        { name: 'Peta Asnaf', icon: <Map size={20} />, path: '/peta-asnaf' },
         { name: 'Kepengurusan', icon: <Wallet size={20} />, path: '/kepengurusan' },
-        { name: 'Kependudukan', icon: <Users size={20} />, path: '/kependudukan' },
         { name: 'Etalase UMKM', icon: <ShoppingBag size={20} />, path: '/etalase' },
+        { name: 'Lihat Public', icon: <Globe size={20} />, path: '/public' },
     ];
 
     return (

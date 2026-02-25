@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import {
     Calendar,
     User,
@@ -28,8 +28,8 @@ const EventDetail = () => {
         try {
             setLoading(true);
             const [resEvent, resPosts] = await Promise.all([
-                axios.get(`http://127.0.0.1:8000/api/v1/events/${id}`),
-                axios.get(`http://127.0.0.1:8000/api/v1/agenda-posts?event_id=${id}`)
+                api.get(`/events/${id}`),
+                api.get(`/agenda-posts?event_id=${id}`)
             ]);
 
             if (resEvent.data.success) {

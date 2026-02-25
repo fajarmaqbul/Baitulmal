@@ -4,10 +4,20 @@ namespace App\Http\Controllers\ApiControllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\ZakatMall;
+use App\Services\WhatsAppService;
+use App\Services\ReceiptService;
 use Illuminate\Http\Request;
 
 class ZakatMallController extends Controller
 {
+    protected $whatsAppService;
+    protected $receiptService;
+
+    public function __construct(WhatsAppService $whatsAppService, ReceiptService $receiptService)
+    {
+        $this->whatsAppService = $whatsAppService;
+        $this->receiptService = $receiptService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -36,6 +46,7 @@ class ZakatMallController extends Controller
     {
         $validated = $request->validate([
             'nama_muzaki' => 'nullable|string',
+            'no_hp' => 'nullable|string',
             'rt_id' => 'required|exists:rts,id',
             'kategori' => 'required|string',
             'jumlah' => 'required|numeric|min:1000',
@@ -44,6 +55,26 @@ class ZakatMallController extends Controller
         ]);
 
         $zakatMall = ZakatMall::create($validated);
+
+        // Generate Receipt PDF
+        $receiptPath = $this->receiptService->generateReceipt('mall', $zakatMall);
+        $receiptUrl = $this->receiptService->getReceiptUrl($receiptPath);
+
+        // Update with receipt path
+        $zakatMall->update(['receipt_path' => $receiptPath]);
+
+        // Send WhatsApp Notification
+        if ($zakatMall->no_hp) {
+            $message = "Terima kasih Bpk/Ibu *" . ($zakatMall->nama_muzaki ?? 'Hamba Allah') . "*\n\n";
+            $message .= "Kami telah menerima pembayaran *Zakat Maal* Anda.\n";
+            $message .= "Nominal: *Rp " . number_format($zakatMall->jumlah, 0, ',', '.') . "*\n";
+            $message .= "Kategori: *" . $zakatMall->kategori . "*\n\n";
+            $message .= "Semoga Allah memberikan keberkahan pada harta yang Anda tunaikan. Aamiin.\n\n";
+            $message .= "📄 *Download Kwitansi Digital:* \n" . $receiptUrl . "\n\n";
+            $message .= "_Baitulmal Masjid_";
+
+            $this->whatsAppService->send($zakatMall->no_hp, $message);
+        }
 
         return response()->json([
             'message' => 'Zakat Mall recorded successfully',

@@ -14,10 +14,14 @@ class MuzakiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Muzaki::with('rt');
+        $query = Muzaki::with(['rt', 'creator', 'updater']);
 
         if ($request->has('tahun')) {
             $query->where('tahun', $request->tahun);
+        }
+
+        if ($request->has('bulan')) {
+            $query->whereMonth('tanggal_bayar', $request->bulan);
         }
 
         if ($request->has('rt_id')) {
@@ -60,6 +64,9 @@ class MuzakiController extends Controller
             $validated['status_bayar'] = $statusMap[$validated['status_bayar']];
         }
         
+        $validated['created_by'] = $request->user()?->id;
+        $validated['updated_by'] = $request->user()?->id;
+
         $muzaki = Muzaki::create($validated);
 
         return response()->json([
@@ -73,7 +80,7 @@ class MuzakiController extends Controller
      */
     public function show($id)
     {
-        $muzaki = Muzaki::with('rt')->findOrFail($id);
+        $muzaki = Muzaki::with(['rt', 'creator', 'updater'])->findOrFail($id);
         return response()->json(['data' => $muzaki]);
     }
 
@@ -101,6 +108,8 @@ class MuzakiController extends Controller
                 $validated['status_bayar'] = $statusMap[$validated['status_bayar']];
             }
         }
+
+        $validated['updated_by'] = $request->user()?->id;
 
         $muzaki->update($validated);
 

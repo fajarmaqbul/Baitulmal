@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import {
     Plus,
     Calendar,
@@ -34,7 +34,7 @@ const EventList = () => {
         setLoading(true);
         try {
             console.log("Fetching events...");
-            const response = await axios.get('http://127.0.0.1:8000/api/v1/events');
+            const response = await api.get('/events');
             console.log("Events API Response:", response.data);
             if (response.data && response.data.success) {
                 setEvents(response.data.data);
@@ -51,7 +51,7 @@ const EventList = () => {
     const handleDelete = async (id) => {
         if (!window.confirm("Apakah Anda yakin ingin menghapus acara ini?")) return;
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/v1/events/${id}`);
+            await api.delete(`/events/${id}`);
             fetchEvents(); // Refresh list
         } catch (error) {
             console.error("Failed to delete event:", error);

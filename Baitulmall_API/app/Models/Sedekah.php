@@ -19,6 +19,7 @@ class Sedekah extends Model
         'tahun',
         'nama_donatur',
         'no_hp_donatur',
+        'receipt_path',
     ];
 
     protected $casts = [

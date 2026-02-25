@@ -47,7 +47,7 @@ const AdminLayout = ({ children }) => {
             {/* AI Assistant Floating Button */}
             <button
                 onClick={() => setIsChatOpen(!isChatOpen)}
-                className={`fixed bottom-6 right-6 p-4 rounded-full shadow-lg transition-all z-50 flex items-center justify-center ${isChatOpen ? 'bg-slate-500 hover:bg-slate-600 rotate-90' : 'bg-gradient-to-r from-primary to-blue-600 hover:shadow-primary/50 hover:scale-105'}`}
+                className={`fixed bottom-6 right-6 p-4 rounded-full shadow-lg transition-all z-50 flex items-center justify-center ${isChatOpen ? 'bg-slate-500 hover:bg-slate-600' : 'bg-[var(--primary)] hover:bg-[var(--primary-hover)]'}`}
                 style={{ width: '60px', height: '60px' }}
                 title="Buka Asisten AI"
             >

@@ -47,17 +47,4 @@ class RT extends Model
         return $this->hasMany(ZakatFitrah::class, 'rt_id');
     }
 
-    /**
-     * Get polygon as GeoJSON
-     */
-    public function getPolygonGeoJsonAttribute(): ?array
-    {
-        if (!$this->polygon) {
-            return null;
-        }
-
-        // Convert geometry to GeoJSON format
-        // This assumes polygon is stored as WKT or geometry type
-        return json_decode($this->polygon, true);
-    }
 }

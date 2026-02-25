@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import {
     Calendar,
     MapPin,
@@ -351,7 +351,7 @@ const AgendaEditorPage = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const peopleRes = await axios.get('http://127.0.0.1:8000/api/v1/people').catch(err => {
+                const peopleRes = await api.get('/people').catch(err => {
                     console.error('Failed to fetch people:', err);
                     return { data: { data: [] } };
                 });
@@ -365,7 +365,7 @@ const AgendaEditorPage = () => {
                 setPeople(peopleList);
 
                 if (postId) {
-                    const postRes = await axios.get(`http://127.0.0.1:8000/api/v1/agenda-posts/${postId}`).catch(() => null);
+                    const postRes = await api.get(`/agenda-posts/${postId}`).catch(() => null);
                     if (postRes?.data?.success) {
                         const post = postRes.data.data;
                         setFormData({
@@ -400,8 +400,8 @@ const AgendaEditorPage = () => {
         try {
             const payload = { event_id: eventId, ...formData, schedule_date: formData.scheduleDate };
             const res = postId
-                ? await axios.put(`http://127.0.0.1:8000/api/v1/agenda-posts/${postId}`, payload)
-                : await axios.post('http://127.0.0.1:8000/api/v1/agenda-posts', payload);
+                ? await api.put(`/agenda-posts/${postId}`, payload)
+                : await api.post('/agenda-posts', payload);
 
             if (res.data.success) {
                 if (!postId) navigate(`/events/${eventId}/agenda/${res.data.data.id}/edit`, { replace: true });
@@ -418,11 +418,11 @@ const AgendaEditorPage = () => {
     const handleAddAssignment = async () => {
         if (!postId || !assignmentForm.person) return;
         try {
-            await axios.post(`http://127.0.0.1:8000/api/v1/agenda-posts/${postId}/assign`, {
+            await api.post(`/agenda-posts/${postId}/assign`, {
                 person_id: assignmentForm.person,
                 jabatan: assignmentForm.role
             });
-            const res = await axios.get(`http://127.0.0.1:8000/api/v1/agenda-posts/${postId}`);
+            const res = await api.get(`/agenda-posts/${postId}`);
             setAssignments(res.data.data.assignments || []);
             setAssignmentForm(prev => ({ ...prev, person: '' }));
         } catch (err) { alert('Gagal menambah petugas'); }
@@ -431,7 +431,7 @@ const AgendaEditorPage = () => {
     const handleRemoveAssignment = async (id) => {
         if (!confirm('Hapus?')) return;
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/v1/assignments/${id}`);
+            await api.delete(`/assignments/${id}`);
             setAssignments(prev => prev.filter(a => a.id !== id));
         } catch (err) { alert('Gagal menghapus'); }
     };

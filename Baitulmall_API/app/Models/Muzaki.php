@@ -13,11 +13,15 @@ class Muzaki extends Model
     protected $fillable = [
         'rt_id',
         'nama',
+        'no_hp',
         'jumlah_jiwa',
         'jumlah_beras_kg',
         'status_bayar',
+        'receipt_path',
         'tahun',
         'tanggal_bayar',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -65,5 +69,21 @@ class Muzaki extends Model
     public function zakatCalculationHistories(): HasMany
     {
         return $this->hasMany(ZakatCalculationHistory::class);
+    }
+
+    /**
+     * Get the user who created this Muzaki
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the user who last updated this Muzaki
+     */
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

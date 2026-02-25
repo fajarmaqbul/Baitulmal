@@ -1,32 +1,13 @@
-import axios from 'axios';
+import api from './api';
 
 /**
  * Baitulmall API Service
  * 
  * Centralized API service layer for Laravel backend communication
- * Base URL: http://127.0.0.1:8000/api/v1
+ * Using shared axios instance from ./api.js
  * 
  * IMPORTANT: This is pure data fetching layer - NO UI LOGIC HERE
  */
-
-// Configure axios instance with base URL
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1',
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    },
-    timeout: 10000, // 10 second timeout
-});
-
-// Add response interceptor for error handling
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        console.error('API Error:', error.response?.data || error.message);
-        return Promise.reject(error);
-    }
-);
 
 /**
  * Fetch Asnaf data for map visualization
@@ -241,6 +222,23 @@ export const reportDeath = async (data) => {
         return response.data;
     } catch (error) {
         console.error('Error reporting death:', error);
+        throw error;
+    }
+};
+
+/**
+ * Fetch Graduation Index (Social Mobility)
+ * 
+ * @param {number} tahun - Year to evaluate against previous year
+ * @returns {Promise<Object>} Summary and details arrays
+ */
+export const fetchGraduationIndex = async (tahun) => {
+    try {
+        const params = { tahun: tahun || new Date().getFullYear() };
+        const response = await api.get('/asnaf/graduation-index', { params });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching Graduation Index:', error);
         throw error;
     }
 };

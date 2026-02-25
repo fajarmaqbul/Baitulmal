@@ -98,7 +98,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = User::with(['person.assignments.structure'])->where('email', $request['email'])->firstOrFail();
+        $user = User::with(['person.assignments.structure', 'person.assignments.role'])->where('email', $request['email'])->firstOrFail();
 
         // #region agent log
         try {
@@ -160,7 +160,7 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        $user = $request->user();
+        $user = $request->user()->load(['person.assignments.structure', 'person.assignments.role']);
 
         // #region agent log
         try {

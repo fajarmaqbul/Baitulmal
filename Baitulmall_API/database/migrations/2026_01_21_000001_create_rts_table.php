@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('ketua')->nullable()->comment('RT head name');
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
-            $table->geometry('polygon')->nullable()->comment('GeoJSON boundary for RT area');
             $table->timestamps();
             
             $table->index('kode');

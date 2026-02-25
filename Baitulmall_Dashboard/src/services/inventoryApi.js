@@ -1,22 +1,4 @@
-import axios from 'axios';
-
-// Configure axios instance with base URL (same as asnafApi)
-const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/v1',
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    },
-    timeout: 10000,
-});
-
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        console.error('API Error:', error.response?.data || error.message);
-        return Promise.reject(error);
-    }
-);
+import api from './api';
 
 // Assets
 export const fetchAssets = async () => {

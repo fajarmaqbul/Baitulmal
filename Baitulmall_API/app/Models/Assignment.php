@@ -42,4 +42,13 @@ class Assignment extends Model
     {
         return $this->belongsTo(AgendaPost::class, 'agenda_id');
     }
+
+    /**
+     * Get the dynamic role associated with this assignment.
+     * Links by 'jabatan' string to 'roles.name'.
+     */
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'jabatan', 'name');
+    }
 }

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Loader2, User, Key, Mail, Shield } from 'lucide-react';
 import { fetchStructures } from '../../services/userApi';
+import { fetchRoles } from '../../services/roleApi';
 
 const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, userData, isSubmitting }) => {
     const [structures, setStructures] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [activeTab, setActiveTab] = useState('credentials'); // credentials, role
 
     // Credentials Form
@@ -22,6 +24,7 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
     useEffect(() => {
         if (isOpen) {
             loadStructures();
+            loadRoles();
         }
     }, [isOpen]);
 
@@ -54,6 +57,17 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
         }
     };
 
+    const loadRoles = async () => {
+        try {
+            const res = await fetchRoles();
+            if (res.success) {
+                setRoles(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load roles", error);
+        }
+    };
+
     const handleCredSubmit = (e) => {
         e.preventDefault();
         onSaveCredentials(userData.id, credForm);
@@ -67,34 +81,49 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" style={{ zIndex: 9999 }}>
-            <div className="bg-[#0f172a] border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
-                <div className="flex items-center justify-between p-6 border-b border-slate-700/50 bg-slate-900/50">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <User className="text-blue-500" size={24} />
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all overflow-y-auto">
+            <div className="w-full max-w-xl max-h-[95vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                {/* Visual Accent Top */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-[#2c3e50] via-blue-500/50 to-[#2c3e50]"></div>
+
+                <div className="flex items-center justify-between p-6 border-b" style={{ background: 'var(--card-footer-bg)', borderColor: 'var(--border-color)' }}>
+                    <h3 className="text-xl font-black flex items-center gap-3 uppercase tracking-tight" style={{ color: 'var(--text-main)' }}>
+                        <div className="p-2 bg-white/5 rounded-xl border border-white/10">
+                            <User className="text-slate-300" size={20} />
+                        </div>
                         Manajemen Pengguna
                     </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-                        <X size={24} />
+                    <button onClick={onClose} className="p-2 rounded-xl transition-all group" style={{ color: 'var(--text-muted)' }}>
+                        <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-slate-700">
+                {/* Tabs - Charcoal Style */}
+                <div className="flex border-b" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                     <button
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors ${activeTab === 'credentials' ? 'text-blue-500 border-b-2 border-blue-500 bg-blue-500/5' : 'text-slate-400 hover:text-slate-200'}`}
+                        className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'credentials' ? 'border-b-2' : ''}`}
+                        style={{
+                            color: activeTab === 'credentials' ? 'var(--text-main)' : 'var(--text-muted)',
+                            borderColor: activeTab === 'credentials' ? 'var(--primary)' : 'transparent',
+                            background: activeTab === 'credentials' ? 'var(--table-row-hover)' : 'transparent'
+                        }}
                         onClick={() => setActiveTab('credentials')}
                     >
                         <span className="flex items-center justify-center gap-2">
-                            <Key size={16} /> Akun & Password
+                            <Key size={14} /> Akun & Keamanan
                         </span>
                     </button>
                     <button
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors ${activeTab === 'role' ? 'text-blue-500 border-b-2 border-blue-500 bg-blue-500/5' : 'text-slate-400 hover:text-slate-200'}`}
+                        className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'role' ? 'border-b-2' : ''}`}
+                        style={{
+                            color: activeTab === 'role' ? 'var(--text-main)' : 'var(--text-muted)',
+                            borderColor: activeTab === 'role' ? 'var(--primary)' : 'transparent',
+                            background: activeTab === 'role' ? 'var(--table-row-hover)' : 'transparent'
+                        }}
                         onClick={() => setActiveTab('role')}
                     >
                         <span className="flex items-center justify-center gap-2">
-                            <Shield size={16} /> Role & Jabatan
+                            <Shield size={14} /> Otoritas Role
                         </span>
                     </button>
                 </div>
@@ -106,9 +135,9 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
                             {userData?.name?.charAt(0)}
                         </div>
                         <div>
-                            <p className="text-xs text-blue-300 font-semibold uppercase tracking-wider mb-0.5">Edit Pengguna</p>
-                            <p className="text-lg font-bold text-white leading-tight">{userData?.name}</p>
-                            <p className="text-sm text-blue-200/70">{userData?.email}</p>
+                            <p className="text-xs text-blue-500 font-semibold uppercase tracking-wider mb-0.5">Edit Pengguna</p>
+                            <p className="text-lg font-bold leading-tight" style={{ color: 'var(--text-main)' }}>{userData?.name}</p>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{userData?.email}</p>
                         </div>
                     </div>
 
@@ -120,7 +149,8 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                                     <input
                                         type="text"
-                                        className="input w-full bg-slate-950 border-slate-700 pl-10"
+                                        className="input w-full"
+                                        style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                         value={credForm.name}
                                         onChange={(e) => setCredForm({ ...credForm, name: e.target.value })}
                                         required
@@ -134,7 +164,8 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                                     <input
                                         type="email"
-                                        className="input w-full bg-slate-950 border-slate-700 pl-10"
+                                        className="input w-full"
+                                        style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                         value={credForm.email}
                                         onChange={(e) => setCredForm({ ...credForm, email: e.target.value })}
                                         required
@@ -148,7 +179,8 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
                                     <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                                     <input
                                         type="password"
-                                        className="input w-full bg-slate-950 border-slate-700 pl-10"
+                                        className="input w-full"
+                                        style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                         placeholder="Kosongkan jika tidak ingin mengubah password"
                                         value={credForm.password}
                                         onChange={(e) => setCredForm({ ...credForm, password: e.target.value })}
@@ -184,7 +216,8 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-300">Struktural / Organisasi</label>
                                 <select
-                                    className="input w-full bg-slate-950 border-slate-700"
+                                    className="input w-full"
+                                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                     value={roleForm.structure_id}
                                     onChange={(e) => setRoleForm({ ...roleForm, structure_id: e.target.value })}
                                     required
@@ -198,15 +231,23 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-300">Jabatan / Role</label>
-                                <input
-                                    type="text"
-                                    className="input w-full bg-slate-950 border-slate-700"
-                                    placeholder="Contoh: Bendahara, Ketua, Staff"
+                                <select
+                                    className="input w-full"
+                                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                     value={roleForm.jabatan}
                                     onChange={(e) => setRoleForm({ ...roleForm, jabatan: e.target.value })}
                                     required
-                                />
-                                <p className="text-xs text-slate-500">Jabatan ini akan menentukan hak akses pengguna.</p>
+                                >
+                                    <option value="">-- Pilih Jabatan --</option>
+                                    {roles.map(r => (
+                                        <option key={r.id} value={r.name}>{r.name}</option>
+                                    ))}
+                                    {/* Fallback for existing data not in roles table */}
+                                    {roleForm.jabatan && !roles.some(r => r.name === roleForm.jabatan) && (
+                                        <option value={roleForm.jabatan}>{roleForm.jabatan} (Manual)</option>
+                                    )}
+                                </select>
+                                <p className="text-xs text-slate-500">Pilih jabatan dari daftar yang telah didefinisikan oleh Super Admin.</p>
                             </div>
 
                             <div className="pt-4 flex justify-end gap-3">
@@ -231,7 +272,7 @@ const UserManagementModal = ({ isOpen, onClose, onSaveRole, onSaveCredentials, u
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

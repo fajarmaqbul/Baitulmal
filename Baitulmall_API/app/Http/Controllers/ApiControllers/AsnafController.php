@@ -184,7 +184,8 @@ class AsnafController extends Controller
     public function statistics(Request $request): JsonResponse
     {
         $tahun = $request->get('tahun', date('Y'));
-        $stats = $this->statisticsService->getOverallSummary($tahun);
+        $bulan = $request->get('bulan');
+        $stats = $this->statisticsService->getOverallSummary($tahun, $bulan);
 
         return response()->json($stats);
     }
@@ -223,5 +224,20 @@ class AsnafController extends Controller
         }
 
         return response()->json(['message' => "Recalculated scores for $count records"]);
+    }
+
+    /**
+     * Get Mustahik Graduation Index
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function graduationIndex(Request $request): JsonResponse
+    {
+        $tahun = $request->get('tahun', date('Y'));
+        
+        $index = $this->statisticsService->getGraduationIndex((int) $tahun);
+
+        return response()->json($index);
     }
 }

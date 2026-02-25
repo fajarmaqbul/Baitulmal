@@ -349,7 +349,7 @@ const RTInputView = ({ user, month, year, isPrintMode = false, signer }) => {
                 </table>
                 <div className="signature-grid">
                     <div className="signature-item">
-                        <div className="signature-title">{signer?.left?.jabatan || 'Ketua Baitulmall'}</div>
+                        <div className="signature-title">{signer?.left?.jabatan || 'Ketua Baitulmal'}</div>
                         <div className="signature-name">{signer?.left?.nama_pejabat || '............................'}</div>
                         {signer?.left?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {signer.left.nip}</div>}
                     </div>
@@ -563,7 +563,7 @@ const RWAggregationView = ({ month, year, isPrintMode = false, signer, activeTab
                 </table>
                 <div className="signature-grid">
                     <div className="signature-item">
-                        <div className="signature-title">{signer?.left?.jabatan || 'Ketua Baitulmall'}</div>
+                        <div className="signature-title">{signer?.left?.jabatan || 'Ketua Baitulmal'}</div>
                         <div className="signature-name">{signer?.left?.nama_pejabat || '............................'}</div>
                         {signer?.left?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {signer.left.nip}</div>}
                     </div>
@@ -749,7 +749,7 @@ const PengeluaranTable = ({ month, year, isPrintMode = false, signer }) => {
                 </table>
                 <div className="signature-grid">
                     <div className="signature-item">
-                        <div className="signature-title">{signer?.left?.jabatan || 'Ketua Baitulmall'}</div>
+                        <div className="signature-title">{signer?.left?.jabatan || 'Ketua Baitulmal'}</div>
                         <div className="signature-name">{signer?.left?.nama_pejabat || '............................'}</div>
                         {signer?.left?.nip && <div className="signature-sk" style={{ fontSize: '0.8rem', opacity: 0.8 }}>NIP/NIY: {signer.left.nip}</div>}
                     </div>

@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_Base = 'http://127.0.0.1:8000/api/v1';
+import api from '../services/api';
 
 export const useSignatureRule = (page, category = 'ALL', rt = 'ALL') => {
     const [leftSigner, setLeftSigner] = useState(null);
@@ -15,7 +13,7 @@ export const useSignatureRule = (page, category = 'ALL', rt = 'ALL') => {
                 // Determine effective params (handle dynamic props effectively)
                 // If page/category/rt changes significantly we refetch
 
-                const response = await axios.post(`${API_Base}/resolve-signature`, {
+                const response = await api.post('/resolve-signature', {
                     page,
                     category,
                     rt,

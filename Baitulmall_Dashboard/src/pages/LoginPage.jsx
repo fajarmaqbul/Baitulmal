@@ -40,7 +40,7 @@ const LoginPage = () => {
                     },
                     timestamp: Date.now(),
                 }),
-            }).catch(() => {});
+            }).catch(() => { });
             // #endregion
 
             if (!user) {
@@ -48,21 +48,18 @@ const LoginPage = () => {
             }
 
             let role = 'User'; // Default to a safe basic role, NOT Super Admin
+            let permissions = [];
 
             // Check assignments
             const assignments = user?.person?.assignments || [];
 
-            // Helpful debug for user
-            if (assignments.length === 0 && user.email !== 'admin@baitulmall.com') {
-                // alert(`Debug: Tidak ada assignment ditemukan untuk user ${user.email}.`);
-            }
-
-            // Find active assignment, or fallback to ANY assignment for debugging/leniency
+            // Find active assignment
             const activeAssignment = assignments.find(a => a.status === 'Aktif' || a.status === 'aktif');
 
             if (activeAssignment) {
                 const jabatan = activeAssignment.jabatan || '';
-                // alert(`Debug: Jabatan aktif ditemukan: ${jabatan}`);
+                // Get pre-defined permissions from the role object if it exists
+                permissions = activeAssignment.role?.permissions || [];
 
                 if (jabatan.includes('Bendahara')) {
                     role = 'Admin Keuangan';
@@ -71,36 +68,16 @@ const LoginPage = () => {
                 } else if (jabatan === 'Ketua Umum') {
                     role = 'Super Admin';
                 }
-            } else if (user?.email === 'admin@baitulmall.com') {
+            } else if (user?.email === 'admin@baitulmall.com' || user?.email === 'admin@baitulmal.com') {
                 role = 'Super Admin';
-            } else {
-                // Final fallback for specific problematic emails if assignment fails
-                if (user?.email?.includes('bendahara')) {
-                    // alert('Fallback: Menggunakan role Admin Keuangan berdasarkan email.');
-                    role = 'Admin Keuangan';
-                }
             }
 
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/621e1365-05bc-449d-a714-261349822a08', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: 'debug-session',
-                    runId: 'auth-run-1',
-                    hypothesisId: 'H1-H3',
-                    location: 'LoginPage.handleSubmit:post-role',
-                    message: 'Resolved frontend role after login',
-                    data: {
-                        resolved_role: role,
-                        has_assignments: Array.isArray(user?.person?.assignments) && user.person.assignments.length > 0,
-                    },
-                    timestamp: Date.now(),
-                }),
-            }).catch(() => {});
-            // #endregion
-
+            // Store role and full user data (with permissions)
             localStorage.setItem('app_role', role);
+            localStorage.setItem('app_user', JSON.stringify({
+                ...user,
+                permissions: permissions
+            }));
 
             navigate('/');
         } catch (err) {
