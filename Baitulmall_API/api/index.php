@@ -4,15 +4,23 @@ set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
 
-if (isset($_GET['token']) && $_GET['token'] === 'BAITULMALL_DEPLOY_2026') {
+if (str_contains($_SERVER['REQUEST_URI'] ?? '', 'SINKRON_DB_2026')) {
     require __DIR__ . '/../vendor/autoload.php';
     $app = require_once __DIR__ . '/../bootstrap/app.php';
-    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-    $migrate = \Illuminate\Support\Facades\Artisan::output();
-    \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-    $seed = \Illuminate\Support\Facades\Artisan::output();
-    header('Content-Type: application/json');
-    echo json_encode(['status' => 'success', 'migration' => $migrate, 'seeding' => $seed]);
+    
+    try {
+        echo "Starting Migration...\n";
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+        
+        echo "Starting Seeding...\n";
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+        
+        echo "SUCCESS: Database Synchronized with Supabase.";
+    } catch (\Exception $e) {
+        echo "ERROR: " . $e->getMessage();
+    }
     exit;
 }
 
