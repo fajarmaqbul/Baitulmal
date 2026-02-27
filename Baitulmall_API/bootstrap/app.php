@@ -14,24 +14,24 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
+    ->registered(function ($app) {
+        if (isset($_SERVER['VERCEL']) || getenv('VERCEL') || isset($_SERVER['VERCEL_URL'])) {
+            $storagePath = '/tmp/storage';
+            if (!is_dir($storagePath)) {
+                @mkdir($storagePath, 0777, true);
+                @mkdir($storagePath . '/framework/sessions', 0777, true);
+                @mkdir($storagePath . '/framework/views', 0777, true);
+                @mkdir($storagePath . '/framework/cache', 0777, true);
+                @mkdir($storagePath . '/framework/cache/data', 0777, true);
+                @mkdir($storagePath . '/app/public', 0777, true);
+                @mkdir($storagePath . '/logs', 0777, true);
+            }
+            $app->useStoragePath($storagePath);
+            
+            // Re-bind the paths in the container since we changed storage path
+            $app->instance('path.storage', $storagePath);
+        }
+    })
     ->create();
-
-/*
-|--------------------------------------------------------------------------
-| Remap Storage for Vercel / Railway
-|--------------------------------------------------------------------------
-*/
-$isVercel = isset($_SERVER['VERCEL']) || getenv('VERCEL') || isset($_SERVER['VERCEL_URL']);
-if ($isVercel || env('APP_ENV') === 'production' || !is_writable(storage_path())) {
-    $storagePath = '/tmp/storage';
-    if (!is_dir($storagePath . '/framework/views')) {
-        @mkdir($storagePath . '/framework/sessions', 0777, true);
-        @mkdir($storagePath . '/framework/views', 0777, true);
-        @mkdir($storagePath . '/framework/cache', 0777, true);
-        @mkdir($storagePath . '/framework/cache/data', 0777, true);
-        @mkdir($storagePath . '/app/public', 0777, true);
-    }
-    $app->useStoragePath($storagePath);
-}
 
 return $app;
