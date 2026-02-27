@@ -14,6 +14,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
+    ->withExceptions(function (Exceptions $exceptions) {
+        // Default exceptions
+    })
     ->create();
 
 $isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
