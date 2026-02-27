@@ -15,7 +15,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
     ->registered(function ($app) {
+        // Force register View & Filesystem services early on Vercel to avoid BindingResolutionException
         if (isset($_SERVER['VERCEL']) || getenv('VERCEL') || isset($_SERVER['VERCEL_URL'])) {
+            $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
+            $app->register(\Illuminate\View\ViewServiceProvider::class);
+
             $storagePath = '/tmp/storage';
             if (!is_dir($storagePath)) {
                 @mkdir($storagePath, 0777, true);
