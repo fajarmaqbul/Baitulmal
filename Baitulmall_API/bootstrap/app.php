@@ -34,6 +34,13 @@ if ($isVercel) {
     $app->useStoragePath($storagePath);
     $app->instance('path.storage', $storagePath);
     
+    // Override bootstrap path to bypass Vercel build cache containing wrong absolute paths
+    $bootstrapPath = '/tmp/bootstrap';
+    if (!is_dir($bootstrapPath . '/cache')) {
+        @mkdir($bootstrapPath . '/cache', 0777, true);
+    }
+    $app->useBootstrapPath($bootstrapPath);
+    
     $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
     $app->register(\Illuminate\View\ViewServiceProvider::class);
 }
