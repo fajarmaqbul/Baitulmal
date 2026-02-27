@@ -14,6 +14,11 @@ $checks = [
         'vendor_exists' => is_dir(__DIR__ . '/../vendor'),
         'tmp_writable' => is_writable('/tmp'),
         'storage_writable' => is_writable('/tmp/storage') || @mkdir('/tmp/storage_test'),
+        'bootstrap_app' => file_exists(__DIR__ . '/../bootstrap/app.php'),
+    ],
+    'php_info' => [
+        'extensions' => get_loaded_extensions(),
+        'ini_file' => php_ini_loaded_file(),
     ]
 ];
 
