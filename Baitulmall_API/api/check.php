@@ -32,6 +32,7 @@ try {
     
     // Check view service
     $checks['view_service'] = $app->bound('view');
+    $checks['exception_handler_bound'] = $app->bound(\Illuminate\Contracts\Debug\ExceptionHandler::class);
     
 } catch (\Throwable $e) {
     $checks['bootstrap'] = 'failed';
