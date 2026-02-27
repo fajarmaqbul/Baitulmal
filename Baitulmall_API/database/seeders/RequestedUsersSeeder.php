@@ -57,6 +57,15 @@ class RequestedUsersSeeder extends Seeder
                     "RT $rtCode" // Keterangan
                 );
             }
+
+            // 5. User Khusus
+            $this->createUser(
+                'Fajar Maqbul Kandri',
+                'fajarmaqbulkandri@gmail.com',
+                $password,
+                'Admin Utama',
+                $structure->id
+            );
         });
     }
 
