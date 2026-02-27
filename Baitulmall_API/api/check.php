@@ -53,13 +53,14 @@ $checks['environment'] = [
     'PHP_SAPI' => PHP_SAPI,
 ];
 
-$checks['filesystem'] = [
-    'tmp_writable' => is_writable('/tmp'),
-    'tmp_storage' => [
-        'is_dir' => is_dir('/tmp/storage'),
-        'is_writable' => is_writable('/tmp/storage'),
-        'mkdir_result' => @mkdir('/tmp/storage', 0777, true) || is_dir('/tmp/storage'),
-    ]
+$checks['db_config'] = [
+    'DB_CONNECTION' => getenv('DB_CONNECTION'),
+    'DB_HOST' => getenv('DB_HOST'),
+    'DB_PORT' => getenv('DB_PORT'),
+    'SUPABASE_DB_HOST' => getenv('SUPABASE_DB_HOST'),
+    'SUPABASE_DB_USER_MASKED' => substr(getenv('SUPABASE_DB_USER') ?: '', 0, 10) . '...',
+    'SUPABASE_DB_DATABASE' => getenv('SUPABASE_DB_DATABASE'),
+    'SUPABASE_DB_PORT' => getenv('SUPABASE_DB_PORT'),
 ];
 
 echo json_encode($checks, JSON_PRETTY_PRINT);
