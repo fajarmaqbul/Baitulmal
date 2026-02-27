@@ -22,33 +22,40 @@ class SedekahController extends Controller
 
     public function index(Request $request)
     {
-        $query = Sedekah::with(['rt', 'amil']);
+        try {
+            $query = Sedekah::with(['rt', 'amil']);
 
-        if ($request->has('jenis')) {
-            $query->where('jenis', $request->jenis);
+            if ($request->has('jenis')) {
+                $query->where('jenis', $request->jenis);
+            }
+
+            if ($request->has('tahun')) {
+                $query->where('tahun', $request->tahun);
+            }
+
+            if ($request->has('bulan')) {
+                $query->whereMonth('tanggal', $request->bulan);
+            }
+
+            if ($request->has('rt_id')) {
+                $query->where('rt_id', $request->rt_id);
+            }
+
+            if ($request->has('rt_kode')) {
+                $query->whereHas('rt', function($q) use ($request) {
+                    $q->where('kode', $request->rt_kode);
+                });
+            }
+
+            $query->latest('tanggal');
+
+            return response()->json($query->paginate($request->get('per_page', 1000)));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'data' => []
+            ], 200);
         }
-
-        if ($request->has('tahun')) {
-            $query->where('tahun', $request->tahun);
-        }
-
-        if ($request->has('bulan')) {
-            $query->whereMonth('tanggal', $request->bulan);
-        }
-
-        if ($request->has('rt_id')) {
-            $query->where('rt_id', $request->rt_id);
-        }
-
-        if ($request->has('rt_kode')) {
-            $query->whereHas('rt', function($q) use ($request) {
-                $q->where('kode', $request->rt_kode);
-            });
-        }
-
-        $query->latest('tanggal');
-
-        return response()->json($query->paginate($request->get('per_page', 1000)));
     }
 
     public function store(Request $request)
@@ -132,58 +139,65 @@ class SedekahController extends Controller
 
     public function summary(Request $request)
     {
-        $query = Sedekah::query();
-        
-        if ($request->has('tahun')) {
-            $query->where('tahun', $request->tahun);
+        try {
+            $query = Sedekah::query();
+            
+            if ($request->has('tahun')) {
+                $query->where('tahun', $request->tahun);
+            }
+
+            if ($request->has('bulan')) {
+                $query->whereMonth('tanggal', $request->bulan);
+            }
+
+            if ($request->has('rt_id')) {
+                $query->where('rt_id', $request->rt_id);
+            }
+
+            $penerimaan = (clone $query)->where('jenis', 'penerimaan')->sum('jumlah');
+            $penyaluran = (clone $query)->where('jenis', 'penyaluran')->sum('jumlah');
+            $count = $query->count();
+
+            // Optimized breakdown by RT using single aggregate query
+            $statsByRT = Sedekah::where('jenis', 'penerimaan')
+                ->select(
+                    'rt_id',
+                    DB::raw('SUM(jumlah) as total_nominal'),
+                    DB::raw('COUNT(*) as transaction_count'),
+                    DB::raw('MAX(tanggal) as last_txn_date')
+                )
+                ->when($request->has('tahun'), fn($q) => $q->where('tahun', $request->tahun))
+                ->when($request->has('bulan'), fn($q) => $q->whereMonth('tanggal', $request->bulan))
+                ->groupBy('rt_id')
+                ->get()
+                ->keyBy('rt_id');
+
+            $breakdownByRT = \App\Models\RT::all()->map(function($rt) use ($statsByRT) {
+                $stats = $statsByRT->get($rt->id);
+                return [
+                    'rt_id' => $rt->id,
+                    'rt_kode' => $rt->kode,
+                    'total_nominal' => (float) ($stats->total_nominal ?? 0),
+                    'transaction_count' => (int) ($stats->transaction_count ?? 0),
+                    'last_transaction' => $stats->last_txn_date ?? null
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'grand_total' => (float) $penerimaan,
+                    'total_expense' => (float) $penyaluran,
+                    'net_balance' => (float) ($penerimaan - $penyaluran),
+                    'total_transaksi' => $count,
+                    'breakdown' => $breakdownByRT
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
         }
-
-        if ($request->has('bulan')) {
-            $query->whereMonth('tanggal', $request->bulan);
-        }
-
-        if ($request->has('rt_id')) {
-            $query->where('rt_id', $request->rt_id);
-        }
-
-        $penerimaan = (clone $query)->where('jenis', 'penerimaan')->sum('jumlah');
-        $penyaluran = (clone $query)->where('jenis', 'penyaluran')->sum('jumlah');
-        $count = $query->count();
-
-        // Optimized breakdown by RT using single aggregate query
-        $statsByRT = Sedekah::where('jenis', 'penerimaan')
-            ->select(
-                'rt_id',
-                DB::raw('SUM(jumlah) as total_nominal'),
-                DB::raw('COUNT(*) as transaction_count'),
-                DB::raw('MAX(tanggal) as last_txn_date')
-            )
-            ->when($request->has('tahun'), fn($q) => $q->where('tahun', $request->tahun))
-            ->when($request->has('bulan'), fn($q) => $q->whereMonth('tanggal', $request->bulan))
-            ->groupBy('rt_id')
-            ->get()
-            ->keyBy('rt_id');
-
-        $breakdownByRT = \App\Models\RT::all()->map(function($rt) use ($statsByRT) {
-            $stats = $statsByRT->get($rt->id);
-            return [
-                'rt_id' => $rt->id,
-                'rt_kode' => $rt->kode,
-                'total_nominal' => (float) ($stats->total_nominal ?? 0),
-                'transaction_count' => (int) ($stats->transaction_count ?? 0),
-                'last_transaction' => $stats->last_txn_date ?? null
-            ];
-        });
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'grand_total' => (float) $penerimaan,
-                'total_expense' => (float) $penyaluran,
-                'net_balance' => (float) ($penerimaan - $penyaluran),
-                'total_transaksi' => $count,
-                'breakdown' => $breakdownByRT
-            ]
-        ]);
     }
 }

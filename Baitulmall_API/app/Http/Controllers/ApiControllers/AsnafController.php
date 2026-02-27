@@ -28,33 +28,41 @@ class AsnafController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Asnaf::with('rt:id,kode,rw');
+        try {
+            $query = Asnaf::with('rt:id,kode,rw');
 
-        // Filters
-        if ($request->has('kategori')) {
-            $query->where('kategori', $request->kategori);
+            // Filters
+            if ($request->has('kategori')) {
+                $query->where('kategori', $request->kategori);
+            }
+
+            if ($request->has('rt_id')) {
+                $query->where('rt_id', $request->rt_id);
+            }
+
+            if ($request->has('tahun')) {
+                $query->where('tahun', $request->tahun);
+            }
+
+            // Default: only active status if not specified
+            if (!$request->has('status')) {
+                $query->where('status', 'active');
+            }
+
+            $query->orderBy('id', 'desc');
+
+            // Pagination
+            $perPage = $request->get('per_page', 50);
+            $asnaf = $query->paginate($perPage);
+
+            return response()->json($asnaf);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ], 200);
         }
-
-        if ($request->has('rt_id')) {
-            $query->where('rt_id', $request->rt_id);
-        }
-
-        if ($request->has('tahun')) {
-            $query->where('tahun', $request->tahun);
-        }
-
-        // Default: only active status if not specified
-        if (!$request->has('status')) {
-            $query->where('status', 'active');
-        }
-
-        $query->orderBy('id', 'desc');
-
-        // Pagination
-        $perPage = $request->get('per_page', 50);
-        $asnaf = $query->paginate($perPage);
-
-        return response()->json($asnaf);
     }
 
     /**

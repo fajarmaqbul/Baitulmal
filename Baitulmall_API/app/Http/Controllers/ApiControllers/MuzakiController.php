@@ -14,33 +14,41 @@ class MuzakiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Muzaki::with(['rt', 'creator', 'updater']);
+        try {
+            $query = Muzaki::with(['rt', 'creator', 'updater']);
 
-        if ($request->has('tahun')) {
-            $query->where('tahun', $request->tahun);
+            if ($request->has('tahun')) {
+                $query->where('tahun', $request->tahun);
+            }
+
+            if ($request->has('bulan')) {
+                $query->whereMonth('tanggal_bayar', $request->bulan);
+            }
+
+            if ($request->has('rt_id')) {
+                $query->where('rt_id', $request->rt_id);
+            }
+
+            if ($request->has('search') && $request->search != '') {
+                $search = $request->search;
+                $query->where('nama', 'like', "%{$search}%");
+            }
+
+            // Default to latest
+            $query->latest('updated_at');
+
+            if ($request->has('nopage')) {
+                return response()->json($query->get());
+            }
+
+            return response()->json($query->paginate($request->get('per_page', 20)));
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ], 200);
         }
-
-        if ($request->has('bulan')) {
-            $query->whereMonth('tanggal_bayar', $request->bulan);
-        }
-
-        if ($request->has('rt_id')) {
-            $query->where('rt_id', $request->rt_id);
-        }
-
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where('nama', 'like', "%{$search}%");
-        }
-
-        // Default to latest
-        $query->latest('updated_at');
-
-        if ($request->has('nopage')) {
-            return response()->json($query->get());
-        }
-
-        return response()->json($query->paginate($request->get('per_page', 20)));
     }
 
     /**
@@ -137,15 +145,25 @@ class MuzakiController extends Controller
     {
         $tahun = $request->get('tahun', date('Y'));
         
-        $totalBeras = Muzaki::where('tahun', $tahun)->sum('jumlah_beras_kg');
-        $totalJiwa = Muzaki::where('tahun', $tahun)->sum('jumlah_jiwa');
-        $totalMuzaki = Muzaki::where('tahun', $tahun)->count();
+        try {
+            $totalBeras = Muzaki::where('tahun', $tahun)->sum('jumlah_beras_kg');
+            $totalJiwa = Muzaki::where('tahun', $tahun)->sum('jumlah_jiwa');
+            $totalMuzaki = Muzaki::where('tahun', $tahun)->count();
 
-        return response()->json([
-            'tahun' => $tahun,
-            'total_beras' => (float) $totalBeras,
-            'total_jiwa' => (int) $totalJiwa,
-            'total_muzaki' => $totalMuzaki
-        ]);
+            return response()->json([
+                'tahun' => $tahun,
+                'total_beras' => (float) $totalBeras,
+                'total_jiwa' => (int) $totalJiwa,
+                'total_muzaki' => $totalMuzaki
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'tahun' => $tahun,
+                'total_beras' => 0,
+                'total_jiwa' => 0,
+                'total_muzaki' => 0,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
