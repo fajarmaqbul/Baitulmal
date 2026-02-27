@@ -27,12 +27,17 @@ if ($isVercel) {
     }
     
     // Set cache path env vars BEFORE Laravel loads
-    // These are read by Application::normalizeCachePath() 
     putenv("APP_SERVICES_CACHE={$tmpBootstrap}/cache/services.php");
     putenv("APP_PACKAGES_CACHE={$tmpBootstrap}/cache/packages.php");
     putenv("APP_CONFIG_CACHE={$tmpBootstrap}/cache/config.php");
     putenv("APP_ROUTES_CACHE={$tmpBootstrap}/cache/routes-v7.php");
     putenv("APP_EVENTS_CACHE={$tmpBootstrap}/cache/events.php");
+    
+    // Create empty .env file so Dotenv doesn't throw
+    $envFile = dirname(__DIR__) . '/.env';
+    if (!file_exists($envFile)) {
+        @file_put_contents($envFile, "# Vercel - env vars are set via Vercel dashboard\n");
+    }
 }
 
 // Determine if the application is in maintenance mode...
