@@ -212,6 +212,7 @@ Route::prefix('v1')->group(function () {
     Route::delete('signature-rules/{id}', [\App\Http\Controllers\ApiControllers\SignatureController::class, 'deleteRule']);
     
     Route::post('resolve-signature', [\App\Http\Controllers\ApiControllers\SignatureController::class, 'resolveSignature']);
+    Route::get('resolve-signature', [\App\Http\Controllers\ApiControllers\SignatureController::class, 'resolveSignature']); // Add GET for easier debugging
 
     // ========== Zakat Calculator ==========
     Route::get('gold-price', [\App\Http\Controllers\ApiControllers\ZakatCalculatorController::class, 'getPrice']);
@@ -243,7 +244,9 @@ Route::prefix('v1')->group(function () {
 
     // ========== Public Transparency ==========
     Route::get('public/statistics', [\App\Http\Controllers\ApiControllers\PublicController::class, 'statistics']);
+    Route::get('statistics', [\App\Http\Controllers\ApiControllers\PublicController::class, 'statistics']); // Alias for frontend
     Route::get('public/live-stats', [\App\Http\Controllers\ApiControllers\PublicController::class, 'liveStats']);
+    Route::get('live-stats', [\App\Http\Controllers\ApiControllers\PublicController::class, 'liveStats']); // Alias for frontend
     Route::get('public/stories', [\App\Http\Controllers\ApiControllers\PublicController::class, 'stories']);
     Route::get('public/receipt/{type}/{id}', [\App\Http\Controllers\ApiControllers\PublicController::class, 'downloadReceipt']);
 });
