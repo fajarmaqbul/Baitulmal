@@ -9,9 +9,16 @@
         },
         "api/test.php": {
             "runtime": "vercel-php@0.7.1"
+        },
+        "api/deploy.php": {
+            "runtime": "vercel-php@0.7.1"
         }
     },
     "routes": [
+        {
+            "src": "/deploy-native",
+            "dest": "api/deploy.php"
+        },
         {
             "src": "/test-php",
             "dest": "api/test.php"
