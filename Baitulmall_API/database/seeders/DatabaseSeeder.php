@@ -27,6 +27,9 @@ class DatabaseSeeder extends Seeder
             RTSeeder::class,
             AsnafSeeder::class,
             SDMSeeder::class,
+            SignatureSeeder::class,
+            ZakatFitrahSeeder::class,
+            SettingSeeder::class,
         ]);
     }
 }

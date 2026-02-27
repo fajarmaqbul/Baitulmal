@@ -19,14 +19,18 @@ class SettingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'key_name' => 'required|string|unique:settings,key_name',
+            'key_name' => 'required|string',
             'value' => 'nullable|string',
             'type' => 'required|in:string,number,json,boolean',
             'description' => 'nullable|string'
         ]);
 
-        $setting = Setting::create($validated);
-        return response()->json(['success' => true, 'data' => $setting], 201);
+        $setting = Setting::updateOrCreate(
+            ['key_name' => $validated['key_name']],
+            $validated
+        );
+
+        return response()->json(['success' => true, 'data' => $setting], 200);
     }
 
     public function show($id)
