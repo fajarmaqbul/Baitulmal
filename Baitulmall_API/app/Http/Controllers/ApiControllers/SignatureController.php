@@ -120,74 +120,65 @@ class SignatureController extends Controller
         $category = $request->input('category', 'ALL');
         $rt = $request->input('rt', 'ALL');
 
-        // Logic: Find best match
-        // Priority 1: Exact match Page + Category + RT
-        // Priority 2: Page + Category + ALL RT
-        // Priority 3: Page + ALL Category + RT
-        // Priority 4: Page + ALL Category + ALL RT
+        try {
+            $rules = SignatureRule::where('page_name', $page)
+                ->with(['leftSigner', 'rightSigner'])
+                ->orderBy('priority', 'desc')
+                ->get();
 
-        // We can fetch all rules for the page and filter in PHP or do a smart query
-        // Let's rely on Query builder sorting by specificity
+            $bestMatch = null;
+            $matchScore = -1;
 
-        $rules = SignatureRule::where('page_name', $page)
-            ->with(['leftSigner', 'rightSigner'])
-            ->orderBy('priority', 'desc') // Manual override priority first
-            ->get();
+            foreach ($rules as $rule) {
+                $currentScore = 0;
 
-        $bestMatch = null;
-        $matchScore = -1;
+                if ($rule->category_filter === 'ALL') {
+                    $currentScore += 1;
+                } elseif ($rule->category_filter === $category) {
+                    $currentScore += 10;
+                } else {
+                    continue;
+                }
 
-        foreach ($rules as $rule) {
-            $currentScore = 0;
+                if ($rule->rt_filter === 'ALL') {
+                    $currentScore += 1;
+                } elseif ($rule->rt_filter === $rt) {
+                    $currentScore += 10;
+                } else {
+                    continue;
+                }
 
-            // Check Category
-            if ($rule->category_filter === 'ALL') {
-                $currentScore += 1; // Generic match
-            } elseif ($rule->category_filter === $category) {
-                $currentScore += 10; // Exact match
-            } else {
-                continue; // Mismatch
+                if ($currentScore > $matchScore) {
+                    $matchScore = $currentScore;
+                    $bestMatch = $rule;
+                }
             }
 
-            // Check RT
-            if ($rule->rt_filter === 'ALL') {
-                $currentScore += 1; // Generic match
-            } elseif ($rule->rt_filter === $rt) {
-                $currentScore += 10; // Exact match
-            } else {
-                continue; // Mismatch
-            }
+            if ($bestMatch) {
+                $left = $bestMatch->leftSigner;
+                $right = $bestMatch->rightSigner;
 
-            if ($currentScore > $matchScore) {
-                $matchScore = $currentScore;
-                $bestMatch = $rule;
+                if (!$left) {
+                    $left = $this->lookupDynamicSigner($category, $rt, 'Ketua');
+                }
+                if (!$right) {
+                    $right = $this->lookupDynamicSigner($category, $rt, 'Bendahara');
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'left' => $left,
+                        'right' => $right,
+                        'rule_id' => $bestMatch->id,
+                        'is_dynamic' => true
+                    ]
+                ]);
             }
+        } catch (\Throwable $e) {
+            // Table may not exist yet — return empty result gracefully
         }
 
-        if ($bestMatch) {
-            $left = $bestMatch->leftSigner;
-            $right = $bestMatch->rightSigner;
-
-            // DYNAMIC SYNC: If signer is null but we have a rule, try to find the person currently in that role
-            // Logic: if rule has "Ketua" but no left_signer_id, find who is "Ketua" in the structure relevant to the category/RT
-            if (!$left) {
-                $left = $this->lookupDynamicSigner($category, $rt, 'Ketua');
-            }
-            if (!$right) {
-                // Heuristic: common right signer is Bendahara or Sekretaris
-                $right = $this->lookupDynamicSigner($category, $rt, 'Bendahara');
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'left' => $left,
-                    'right' => $right,
-                    'rule_id' => $bestMatch->id,
-                    'is_dynamic' => true
-                ]
-            ]);
-        }
         return response()->json([
             'success' => true,
             'data' => [
