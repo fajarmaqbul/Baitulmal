@@ -1,23 +1,16 @@
 <?php
-// Vercel Entry Point with Debug Support
-set_error_handler(function ($severity, $message, $file, $line) {
-    throw new ErrorException($message, 0, $severity, $file, $line);
-});
+// Vercel Entry Point
 
-if (str_contains($_SERVER['REQUEST_URI'] ?? '', 'SINKRON_DB_2026')) {
+if (isset($_GET['sync']) && $_GET['sync'] === '2026') {
     require __DIR__ . '/../vendor/autoload.php';
     $app = require_once __DIR__ . '/../bootstrap/app.php';
-    
     try {
-        echo "Starting Migration...\n";
+        echo "Starting Full Production Sync...\n";
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
-        
-        echo "Starting Seeding...\n";
+        echo "Migration: " . \Illuminate\Support\Facades\Artisan::output() . "\n";
         \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
-        
-        echo "SUCCESS: Database Synchronized with Supabase.";
+        echo "Seeding: " . \Illuminate\Support\Facades\Artisan::output() . "\n";
+        echo "SUCCESS: Produksi Sinkron.";
     } catch (\Exception $e) {
         echo "ERROR: " . $e->getMessage();
     }
