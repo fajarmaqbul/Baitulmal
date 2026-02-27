@@ -24,3 +24,8 @@ export const fetchPersonById = async (id) => {
     const response = await api.get(`/people/${id}`);
     return response.data;
 };
+
+export const fetchPeopleOverview = async () => {
+    const response = await api.get('/people/overview');
+    return response.data;
+};

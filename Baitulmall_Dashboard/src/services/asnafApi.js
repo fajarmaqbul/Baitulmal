@@ -26,7 +26,7 @@ export const fetchAsnafMap = async (filters = {}) => {
             ...(filters.rt_id && { rt_id: filters.rt_id }),
         };
 
-        const response = await api.get('/asnaf/map', { params });
+        const response = await api.get('asnaf/map', { params });
         return response.data.data || [];
     } catch (error) {
         console.error('Error fetching Asnaf map data:', error);
@@ -57,7 +57,7 @@ export const fetchAsnafList = async (options = {}) => {
             ...(options.status && { status: options.status }),
         };
 
-        const response = await api.get('/asnaf', { params });
+        const response = await api.get('asnaf', { params });
         return response.data; // Returns pagination object {data, total, per_page, current_page, etc}
     } catch (error) {
         console.error('Error fetching Asnaf list:', error);
@@ -77,7 +77,7 @@ export const fetchAsnafStatistics = async (tahun) => {
             tahun: tahun || new Date().getFullYear(),
         };
 
-        const response = await api.get('/asnaf/statistics', { params });
+        const response = await api.get('asnaf/statistics', { params });
         return response.data;
     } catch (error) {
         console.error('Error fetching Asnaf statistics:', error);
@@ -93,7 +93,7 @@ export const fetchAsnafStatistics = async (tahun) => {
  */
 export const fetchAsnafById = async (id) => {
     try {
-        const response = await api.get(`/asnaf/${id}`);
+        const response = await api.get(`asnaf/${id}`);
         return response.data;
     } catch (error) {
         console.error(`Error fetching Asnaf ID ${id}:`, error);
@@ -117,7 +117,7 @@ export const fetchAsnafById = async (id) => {
  */
 export const createAsnaf = async (data) => {
     try {
-        const response = await api.post('/asnaf', data);
+        const response = await api.post('asnaf', data);
         return response.data;
     } catch (error) {
         console.error('Error creating Asnaf:', error);
@@ -134,7 +134,7 @@ export const createAsnaf = async (data) => {
  */
 export const updateAsnaf = async (id, data) => {
     try {
-        const response = await api.put(`/asnaf/${id}`, data);
+        const response = await api.put(`asnaf/${id}`, data);
         return response.data;
     } catch (error) {
         console.error(`Error updating Asnaf ID ${id}:`, error);
@@ -150,7 +150,7 @@ export const updateAsnaf = async (id, data) => {
  */
 export const deleteAsnaf = async (id) => {
     try {
-        const response = await api.delete(`/asnaf/${id}`);
+        const response = await api.delete(`asnaf/${id}`);
         return response.data;
     } catch (error) {
         console.error(`Error deleting Asnaf ID ${id}:`, error);
@@ -165,7 +165,7 @@ export const deleteAsnaf = async (id) => {
  */
 export const fetchRTs = async () => {
     try {
-        const response = await api.get('/rts');
+        const response = await api.get('rts');
         return response.data;
     } catch (error) {
         console.error('Error fetching RTs:', error);
@@ -181,7 +181,7 @@ export const fetchRTs = async () => {
  */
 export const fetchRTById = async (id) => {
     try {
-        const response = await api.get(`/rts/${id}`);
+        const response = await api.get(`rts/${id}`);
         return response.data;
     } catch (error) {
         console.error(`Error fetching RT ID ${id}:`, error);
@@ -197,7 +197,7 @@ export const fetchRTById = async (id) => {
  */
 export const fetchAsnafByRT = async (rtId) => {
     try {
-        const response = await api.get(`/rts/${rtId}/asnaf`);
+        const response = await api.get(`rts/${rtId}/asnaf`);
         return response.data;
     } catch (error) {
         console.error(`Error fetching Asnaf for RT ${rtId}:`, error);
@@ -218,7 +218,7 @@ export const fetchAsnafByRT = async (rtId) => {
  */
 export const reportDeath = async (data) => {
     try {
-        const response = await api.post('/death-events', data);
+        const response = await api.post('death-events', data);
         return response.data;
     } catch (error) {
         console.error('Error reporting death:', error);
@@ -235,7 +235,7 @@ export const reportDeath = async (data) => {
 export const fetchGraduationIndex = async (tahun) => {
     try {
         const params = { tahun: tahun || new Date().getFullYear() };
-        const response = await api.get('/asnaf/graduation-index', { params });
+        const response = await api.get('asnaf/graduation-index', { params });
         return response.data;
     } catch (error) {
         console.error('Error fetching Graduation Index:', error);

@@ -16,11 +16,14 @@ import {
     RefreshCw,
     Printer,
     Download,
-    Database
+    Database,
+    BrainCircuit
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import BeneficiaryList from '../components/BeneficiaryList';
+import MustahikScoring from '../components/MustahikScoring';
+import RunwayAnalytics from '../components/RunwayAnalytics';
 import PrintLayout from '../components/PrintLayout';
 import { usePagePrint } from '../hooks/usePagePrint';
 import { useSignatureRule } from '../hooks/useSignatureRule';
@@ -315,6 +318,17 @@ const Santunan = () => {
                         >
                             <Database size={16} /> Database Master
                         </button>
+                        <button
+                            onClick={() => setViewMode('scoring')}
+                            style={{
+                                padding: '0 1rem', borderRadius: '6px', border: 'none', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px',
+                                background: viewMode === 'scoring' ? 'var(--card-bg)' : 'transparent',
+                                color: viewMode === 'scoring' ? 'var(--primary)' : 'var(--text-muted)',
+                                boxShadow: viewMode === 'scoring' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                            }}
+                        >
+                            <BrainCircuit size={16} /> Prioritas AI
+                        </button>
                     </div>
 
                     {/* Year Selector (Only for Keuangan) */}
@@ -527,21 +541,28 @@ const Santunan = () => {
                         </div>
                     </>
                 ) : (
-                    <div className="no-print" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', height: 'calc(100vh - 200px)' }}>
-                        {/* Left Column: Yatim */}
-                        <BeneficiaryList
-                            type="yatim"
-                            title="Database Anak Yatim / Piatu"
-                            colorClass="primary"
-                        />
+                    viewMode === 'scoring' ? (
+                        <div className="d-flex flex-column gap-4 no-print">
+                            <RunwayAnalytics />
+                            <MustahikScoring />
+                        </div>
+                    ) : (
+                        <div className="no-print" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', height: 'calc(100vh - 200px)' }}>
+                            {/* Left Column: Yatim */}
+                            <BeneficiaryList
+                                type="yatim"
+                                title="Database Anak Yatim / Piatu"
+                                colorClass="primary"
+                            />
 
-                        {/* Right Column: Dhuafa */}
-                        <BeneficiaryList
-                            type="dhuafa"
-                            title="Database Dhuafa Prioritas"
-                            colorClass="warning"
-                        />
-                    </div>
+                            {/* Right Column: Dhuafa */}
+                            <BeneficiaryList
+                                type="dhuafa"
+                                title="Database Dhuafa Prioritas"
+                                colorClass="warning"
+                            />
+                        </div>
+                    )
                 )
             }
 

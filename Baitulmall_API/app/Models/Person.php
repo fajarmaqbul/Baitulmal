@@ -26,7 +26,13 @@ class Person extends Model
         'no_wa',
         'email',
         'foto_url',
+        'skills',
         'status_hidup'
+    ];
+
+    protected $casts = [
+        'skills' => 'array',
+        'tanggal_lahir' => 'date',
     ];
 
     public function rt()

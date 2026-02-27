@@ -53,7 +53,7 @@ const AsnafAnalyticsTab = () => {
     return (
         <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
             {/* Header / Summary stats */}
-            <div className="main-grid" style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
                 <div className="card stat-hover" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', borderLeft: '4px solid var(--danger)' }}>
                     <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(252,66,74,0.1)', color: 'var(--danger)' }}>
                         <ShieldAlert size={28} />

@@ -165,20 +165,24 @@ const PublicTransparency = () => {
         <div className="min-h-screen bg-[#0a0a0a] text-[#e4e4e7] selection:bg-primary selection:text-white font-['Inter',_sans-serif] scroll-smooth">
             {/* Navbar */}
             <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#0a0a0a]/80 backdrop-blur-2xl">
-                <div className="w-full px-10 h-16 flex items-center justify-between">
+                <div className="w-full px-10 h-[72px] flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/10">
-                            <Heart className="text-white" size={16} fill="currentColor" />
+                        <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/10">
+                            <Heart className="text-white" size={18} fill="currentColor" />
                         </div>
-                        <h3 className="font-bold text-lg tracking-tighter text-white m-0 leading-none">Baitulmal<span className="text-primary"> Fajar Maqbul</span></h3>
+                        <h3 className="font-black text-xl tracking-tighter text-white m-0 leading-none">Baitulmal<span className="text-primary"> Fajar Maqbul</span></h3>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <a href="/public" className="text-[10px] font-bold text-white transition-all decoration-none uppercase tracking-widest">Public</a>
-                        <a href="/tatakelola" className="text-[10px] font-bold text-[#a1a1aa] hover:text-white transition-all decoration-none uppercase tracking-widest">Tata Kelola</a>
-                        <a href="/etalase" className="text-[10px] font-bold text-[#a1a1aa] hover:text-white transition-all decoration-none uppercase tracking-widest">Etalase</a>
-                        <a href="/login" className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-xs font-bold border border-white/[0.05] transition-all flex items-center gap-2 group decoration-none">
-                            Admin <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                        </a>
+                    <div className="flex items-center gap-10">
+                        <a href="/public" className="text-[13px] font-bold text-white transition-all decoration-none border-b-2 border-primary pb-1">Public</a>
+                        <a href="/tatakelola" className="text-[13px] font-bold text-[#94a3b8] hover:text-white transition-all decoration-none">Tata Kelola</a>
+                        <a href="/tatakelola/zakat-fitrah" className="text-[13px] font-bold text-[#94a3b8] hover:text-white transition-all decoration-none">Zakat Fitrah</a>
+                        <a href="/tatakelola/zakat-produktif" className="text-[13px] font-bold text-[#94a3b8] hover:text-white transition-all decoration-none">Zakat Produktif</a>
+                        <a href="/etalase" className="text-[13px] font-bold text-[#94a3b8] hover:text-white transition-all decoration-none">Etalase</a>
+                        <a href="/login" style={{
+                            padding: '10px 20px', borderRadius: '12px', background: 'var(--primary)',
+                            fontSize: '0.8rem', fontWeight: 800, color: 'white', textDecoration: 'none',
+                            boxShadow: '0 8px 16px -4px rgba(59, 130, 246, 0.5)'
+                        }}>ADMIN PORTAL</a>
                     </div>
                 </div>
             </nav>

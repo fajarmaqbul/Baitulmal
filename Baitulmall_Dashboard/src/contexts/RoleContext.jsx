@@ -14,6 +14,7 @@ const PERMISSION_MAP = {
     'Dashboard': 'view_dashboard',
     'Zakat Fitrah': 'manage_zakat_fitrah',
     'Zakat Mal': 'manage_zakat_mall',
+    'Zakat Produktif': 'manage_zakat_produktif',
     'Sedekah': 'manage_sedekah',
     'Santunan': 'manage_santunan',
     'Donasi Tematik': 'manage_campaigns',
@@ -72,7 +73,7 @@ export const RoleProvider = ({ children }) => {
 
         // 4. Legacy Hardcoded Fallback for old roles
         if (currentRole === ROLES.ADMIN_KEUANGAN) {
-            const allowed = ['Dashboard', 'Donasi Tematik', 'Zakat Fitrah', 'Zakat Mal', 'Sedekah', 'Santunan', 'Data Asnaf'];
+            const allowed = ['Dashboard', 'Donasi Tematik', 'Zakat Fitrah', 'Zakat Mal', 'Zakat Produktif', 'Sedekah', 'Santunan', 'Data Asnaf'];
             if (allowed.includes(permIdOrLegacyName)) return true;
         }
 

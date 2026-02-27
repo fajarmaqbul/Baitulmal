@@ -34,7 +34,8 @@ import {
     TrendingUp, // Added for Graduation tab icon
     Activity, // Added for Analytics tab icon
     UserPlus, // Added by user instruction
-    RefreshCw // Added by user instruction
+    RefreshCw, // Added by user instruction
+    BrainCircuit
 } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../utils/dataUtils';
 import PrintLayout from '../components/PrintLayout';
@@ -125,6 +126,7 @@ const AsnafManagement = () => {
     const [showDeathModal, setShowDeathModal] = useState(false);
     const [selectedDeathAsnaf, setSelectedDeathAsnaf] = useState(null);
     const [editId, setEditId] = useState(null);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         rt: '01',
         kategori: 'Fakir',
@@ -132,7 +134,7 @@ const AsnafManagement = () => {
         jumlahJiwa: '',
         tahun: new Date().getFullYear().toString(),
         pendapatan: '',
-        status_rumah_detail: 'menumpang',
+        status_rumah_detail: 'numpang',
         kondisi_bangunan: 'tidak_permanen',
         fasilitas_dasar: 'keduanya_terbatas',
         custom_criteria: {}
@@ -147,7 +149,7 @@ const AsnafManagement = () => {
 
             const [rtsResponse, asnafResponse, strukturResponse, settingsRes] = await Promise.all([
                 fetchRTs(),
-                fetchAsnafList({ per_page: 500 }),
+                fetchAsnafList({ per_page: 5000 }),
                 fetchStrukturInti().catch(() => []),
                 fetchSettings().catch(() => ({ success: false }))
             ]);
@@ -233,11 +235,17 @@ const AsnafManagement = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log("Submit button clicked, processing payload...");
+
+        // Find matching RT object
+        const targetRt = rtRw.find(r => r.kode === formData.rt);
+        console.log("Target RT lookup:", formData.rt, "=>", targetRt);
+
         const payload = {
-            rt_id: rtRw.find(r => r.kode === formData.rt)?.id || 1,
+            rt_id: targetRt?.id || 1,
             nama: formData.nama,
             kategori: formData.kategori,
-            jumlah_jiwa: ['Amil', 'Fisabilillah'].includes(formData.kategori) ? 1 : Number(formData.jumlahJiwa),
+            jumlah_jiwa: ['Amil', 'Fisabilillah'].includes(formData.kategori) ? 1 : Number(formData.jumlahJiwa || 0),
             tahun: Number(formData.tahun),
             status: 'active',
             pendapatan: formData.pendapatan ? Number(formData.pendapatan) : null,
@@ -248,6 +256,9 @@ const AsnafManagement = () => {
             custom_criteria: formData.custom_criteria
         };
 
+        console.log("Payload to serve:", payload);
+
+        setSaving(true);
         try {
             if (editId) {
                 if (!usingFallback) {
@@ -267,18 +278,23 @@ const AsnafManagement = () => {
             if (!usingFallback) loadData();
         } catch (err) {
             console.error('Failed to save data:', err);
-            const validationErrors = err.response?.data?.errors;
+            console.error('Error Response:', err.response?.data);
+
             let errorMessage = 'Gagal menyimpan data ke API.';
+            const serverMsg = err.response?.data?.message;
+            const validationErrors = err.response?.data?.errors;
 
             if (validationErrors) {
-                errorMessage += '\n- ' + Object.values(validationErrors).flat().join('\n- ');
-            } else if (err.response?.data?.message) {
-                errorMessage += '\n' + err.response.data.message;
+                errorMessage += '\nValidasi Gagal:\n- ' + Object.values(validationErrors).flat().join('\n- ');
+            } else if (serverMsg) {
+                errorMessage += '\nServer: ' + serverMsg;
             } else {
-                errorMessage += '\n' + (err.message || 'Pastikan Laravel backend berjalan.');
+                errorMessage += '\nError: ' + (err.message || 'Pastikan Laravel backend berjalan.');
             }
 
             alert(errorMessage);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -333,7 +349,7 @@ const AsnafManagement = () => {
             jumlahJiwa: '',
             tahun: new Date().getFullYear().toString(),
             pendapatan: '',
-            status_rumah_detail: 'menumpang',
+            status_rumah_detail: 'numpang',
             kondisi_bangunan: 'tidak_permanen',
             fasilitas_dasar: 'keduanya_terbatas',
             custom_criteria: {}
@@ -689,12 +705,19 @@ const AsnafManagement = () => {
                                         }}
                                         onClick={() => {
                                             setEditId(null);
+                                            // Determine default kategori based on view
+                                            const defaultKat = specialCategories.includes(selectedRt) ? selectedRt : 'Fakir';
                                             setFormData({
-                                                rt: selectedRt === 'Semua' ? '1' : selectedRt,
-                                                kategori: 'Fakir',
+                                                rt: specialCategories.includes(selectedRt) ? '01' : selectedRt,
+                                                kategori: defaultKat,
                                                 nama: '',
-                                                jumlahJiwa: '',
-                                                tahun: new Date().getFullYear().toString()
+                                                jumlahJiwa: ['Amil', 'Fisabilillah'].includes(defaultKat) ? 1 : '',
+                                                tahun: selectedTahun || new Date().getFullYear().toString(),
+                                                pendapatan: '',
+                                                status_rumah_detail: 'numpang',
+                                                kondisi_bangunan: 'tidak_permanen',
+                                                fasilitas_dasar: 'keduanya_terbatas',
+                                                custom_criteria: {}
                                             });
                                             setShowModal(true);
                                         }}
@@ -712,7 +735,12 @@ const AsnafManagement = () => {
                                                     <th>Nama Kepala Keluarga</th>
                                                     <th>RT</th>
                                                     <th>Kategori</th>
-                                                    <th style={{ textAlign: 'center' }}>Score</th>
+                                                    <th style={{ textAlign: 'center' }}>
+                                                        <div className="d-flex align-items-center justify-content-center gap-1" title="AI Priority Scoring" style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem' }}>
+                                                            <BrainCircuit size={14} />
+                                                            URGENSI
+                                                        </div>
+                                                    </th>
                                                     <th style={{ textAlign: 'center' }}>Jiwa</th>
                                                     <th className="no-print">Aksi</th>
                                                 </tr>
@@ -742,16 +770,26 @@ const AsnafManagement = () => {
                                                         </td>
                                                         <td style={{ textAlign: 'center' }}>
                                                             {item.score !== null ? (
-                                                                <span style={{
-                                                                    background: item.score >= 80 ? 'var(--success)' : item.score >= 50 ? 'var(--warning)' : 'var(--danger)',
-                                                                    color: '#fff',
-                                                                    padding: '2px 8px',
-                                                                    borderRadius: '10px',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: 800
-                                                                }}>
-                                                                    {item.score}
-                                                                </span>
+                                                                <div className="d-flex flex-column align-items-center">
+                                                                    <span style={{
+                                                                        fontSize: '0.95rem',
+                                                                        fontWeight: 900,
+                                                                        color: item.score >= 80 ? '#ef4444' : item.score >= 60 ? '#f59e0b' : item.score >= 40 ? '#3b82f6' : '#10b981'
+                                                                    }}>
+                                                                        {item.score}
+                                                                    </span>
+                                                                    <div style={{
+                                                                        fontSize: '0.6rem',
+                                                                        fontWeight: 800,
+                                                                        textTransform: 'uppercase',
+                                                                        padding: '1px 6px',
+                                                                        borderRadius: '4px',
+                                                                        background: item.score >= 80 ? 'rgba(239, 68, 68, 0.1)' : item.score >= 60 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                                                        color: item.score >= 80 ? '#ef4444' : item.score >= 60 ? '#f59e0b' : '#3b82f6'
+                                                                    }}>
+                                                                        {item.score >= 80 ? 'Prioritas I' : item.score >= 60 ? 'Prioritas II' : 'Reguler'}
+                                                                    </div>
+                                                                </div>
                                                             ) : '-'}
                                                         </td>
                                                         <td style={{ fontWeight: 800, textAlign: 'center' }}>{item.jumlahJiwa}</td>
@@ -1019,7 +1057,7 @@ const AsnafManagement = () => {
                                     value={formData.jumlahJiwa}
                                     onChange={e => setFormData({ ...formData, jumlahJiwa: e.target.value })}
                                     placeholder="0"
-                                    required
+                                    required={!['Amil', 'Fisabilillah'].includes(formData.kategori)}
                                     style={{ fontSize: '1.25rem', fontWeight: 700, textAlign: 'center' }}
                                     disabled={['Amil', 'Fisabilillah'].includes(formData.kategori)}
                                 />
@@ -1041,8 +1079,19 @@ const AsnafManagement = () => {
                                     type="submit"
                                     className="btn btn-primary"
                                     style={{ flex: 1.5 }}
+                                    disabled={saving}
                                 >
-                                    <Plus size={20} strokeWidth={3} /> SIMPAN DATA
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="animate-spin" size={20} />
+                                            <span>MENYIMPAN...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus size={20} strokeWidth={3} />
+                                            <span>SIMPAN DATA</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

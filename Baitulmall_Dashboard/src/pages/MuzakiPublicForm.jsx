@@ -136,7 +136,7 @@ const MuzakiPublicForm = () => {
                         Daftar Lainnya
                     </button>
                 </div>
-                <p className="mt-8 text-white/70 text-sm">© {new Date().getFullYear()} Baitulmal Masjid Kandri</p>
+                <p className="mt-8 text-white/70 text-sm">© {new Date().getFullYear()} Baitulmal Fajar Maqbul</p>
             </div>
         );
     }
@@ -151,7 +151,7 @@ const MuzakiPublicForm = () => {
                         </div>
                     </div>
                     <h1 className="text-4xl font-extrabold text-white mb-2 drop-shadow-md">Daftar Zakat</h1>
-                    <p className="text-blue-100 text-lg opacity-90">Baitulmal Masjid Kandri</p>
+                    <p className="text-blue-100 text-lg opacity-90">Baitulmal Fajar Maqbul</p>
                     <div className="mt-2 inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/20">
                         <span className="text-white text-xs font-bold uppercase tracking-wider">Ramadhan {formData.tahun}</span>
                     </div>

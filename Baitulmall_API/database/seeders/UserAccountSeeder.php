@@ -32,7 +32,7 @@ class UserAccountSeeder extends Seeder
             ['nama_struktur' => 'Pengurus Baitulmall', 'tipe' => 'Struktural', 'is_active' => true]
         );
 
-        // 2. Bendahara (3 Orang)
+        /* 2. Bendahara (3 Orang) - Disabled by request
         $bendaharas = [
             ['name' => 'Ahmad Bendahara', 'email' => 'bendahara1@baitulmall.com', 'jabatan' => 'Bendahara Umum'],
             ['name' => 'Siti Keuangan', 'email' => 'bendahara2@baitulmall.com', 'jabatan' => 'Bendahara Penerimaan'],
@@ -72,6 +72,7 @@ class UserAccountSeeder extends Seeder
             );
         }
         $this->command->info('✅ 3 Bendahara created (password: bendahara123)');
+        */
 
         // 3. Koordinator RT (7 Orang)
         for ($i = 1; $i <= 7; $i++) {

@@ -26,6 +26,44 @@ class PersonController extends Controller
         ]);
     }
 
+    public function overview(Request $request)
+    {
+        $people = Person::with(['assignments.structure'])
+            ->get()
+            ->map(function($person) {
+                $activeAssignments = $person->assignments->where('status', 'Aktif');
+                $roleCount = $activeAssignments->count();
+                
+                // Burnout Score calculation
+                // High level roles (Ketua, Sekretaris, Bendahara) = 10, Others = 4
+                $burnoutScore = $activeAssignments->reduce(function($carry, $a) {
+                    $isHighLevel = preg_match('/Ketua|Sekretaris|Bendahara/i', $a->jabatan);
+                    return $carry + ($isHighLevel ? 10 : 4);
+                }, 0);
+
+                return [
+                    'id' => $person->id,
+                    'nama' => $person->nama_lengkap,
+                    'nik' => $person->nik,
+                    'no_wa' => $person->no_wa,
+                    'skills' => $person->skills,
+                    'role_count' => $roleCount,
+                    'burnout_score' => $burnoutScore,
+                    'status_burnout' => $burnoutScore > 20 ? 'Overloaded' : ($burnoutScore > 10 ? 'Busy' : 'Available'),
+                    'roles' => $activeAssignments->map(fn($a) => [
+                        'jabatan' => $a->jabatan,
+                        'organisasi' => $a->structure->nama_struktur,
+                        'kode' => $a->structure->kode_struktur
+                    ])->values()
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $people
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

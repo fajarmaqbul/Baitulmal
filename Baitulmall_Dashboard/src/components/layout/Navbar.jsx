@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, MessageSquare, Bell, ChevronDown, Maximize, User, LogOut, Settings } from 'lucide-react';
+import { Search, Menu, MessageSquare, Bell, ChevronDown, Maximize, User, LogOut, Settings, Globe, BookOpen, Scale, Landmark } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 const Navbar = () => {
     const [user, setUser] = useState(null);
@@ -66,6 +67,67 @@ const Navbar = () => {
                             <Bell size={16} />
                             <span style={{ position: 'absolute', top: '8px', right: '8px', width: '5px', height: '5px', background: 'var(--danger)', borderRadius: '50%', border: '1px solid var(--card-bg)' }}></span>
                         </button>
+                    </div>
+
+                    <div className="vr d-none d-md-block mx-2" style={{ height: '20px', opacity: 0.1, background: 'var(--text-muted)' }}></div>
+
+                    {/* Public Portals Dropdown */}
+                    <div className="dropdown">
+                        <button
+                            className="btn d-flex align-items-center gap-2 px-3 py-2 rounded-3"
+                            style={{
+                                color: 'var(--text-muted)',
+                                border: '1px solid var(--border-color)',
+                                background: 'rgba(255,255,255,0.02)',
+                                fontSize: '0.8rem',
+                                fontWeight: 700
+                            }}
+                            type="button"
+                            data-bs-toggle="dropdown"
+                        >
+                            <Globe size={16} className="text-primary" />
+                            <span className="d-none d-md-inline">Public Portals</span>
+                            <ChevronDown size={12} opacity={0.5} />
+                        </button>
+                        <ul className="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2" style={{ background: 'var(--card-bg)', minWidth: '220px', borderRadius: '16px', marginTop: '10px' }}>
+                            <li>
+                                <NavLink to="/tatakelola" className="dropdown-item rounded-3 d-flex align-items-center gap-3 py-2 px-3 mb-1" style={{ color: 'var(--text-muted)' }}>
+                                    <div className="p-2 bg-primary bg-opacity-10 rounded-3 text-primary"><BookOpen size={16} /></div>
+                                    <div>
+                                        <div className="fw-bold text-white small">Tata Kelola Umum</div>
+                                        <div style={{ fontSize: '0.65rem' }}>Prinsip & Transparansi</div>
+                                    </div>
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/tatakelola/zakat-fitrah" className="dropdown-item rounded-3 d-flex align-items-center gap-3 py-2 px-3 mb-1" style={{ color: 'var(--text-muted)' }}>
+                                    <div className="p-2 bg-success bg-opacity-10 rounded-3 text-success"><Scale size={16} /></div>
+                                    <div>
+                                        <div className="fw-bold text-white small">Tata Kelola ZF</div>
+                                        <div style={{ fontSize: '0.65rem' }}>Edukasi & Porsi 8 Asnaf</div>
+                                    </div>
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/tatakelola/zakat-produktif" className="dropdown-item rounded-3 d-flex align-items-center gap-3 py-2 px-3 mb-1" style={{ color: 'var(--text-muted)' }}>
+                                    <div className="p-2 bg-warning bg-opacity-10 rounded-3 text-warning"><Landmark size={16} /></div>
+                                    <div>
+                                        <div className="fw-bold text-white small">Tata Kelola Produktif</div>
+                                        <div style={{ fontSize: '0.65rem' }}>Pemberdayaan Ekonomi</div>
+                                    </div>
+                                </NavLink>
+                            </li>
+                            <li><hr className="dropdown-divider opacity-10" /></li>
+                            <li>
+                                <NavLink to="/public" className="dropdown-item rounded-3 d-flex align-items-center gap-3 py-2 px-3" style={{ color: 'var(--text-muted)' }}>
+                                    <div className="p-2 bg-info bg-opacity-10 rounded-3 text-info"><Globe size={16} /></div>
+                                    <div>
+                                        <div className="fw-bold text-white small">Portal Transparansi</div>
+                                        <div style={{ fontSize: '0.65rem' }}>Dashboard Publik</div>
+                                    </div>
+                                </NavLink>
+                            </li>
+                        </ul>
                     </div>
 
                     <div className="vr d-none d-md-block mx-2" style={{ height: '20px', opacity: 0.1, background: 'var(--text-muted)' }}></div>

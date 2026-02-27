@@ -3,46 +3,39 @@
 namespace App\Observers;
 
 use App\Models\Asnaf;
-use App\Events\DashboardUpdated;
+use App\Events\MustahikUpdated;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class AsnafObserver
 {
-    /**
-     * Handle the Asnaf "created" event.
-     */
     public function created(Asnaf $asnaf): void
     {
         $this->clearCacheAndBroadcast($asnaf->tahun);
     }
 
-    /**
-     * Handle the Asnaf "updated" event.
-     */
     public function updated(Asnaf $asnaf): void
     {
         $this->clearCacheAndBroadcast($asnaf->tahun);
     }
 
-    /**
-     * Handle the Asnaf "deleted" event.
-     */
     public function deleted(Asnaf $asnaf): void
     {
         $this->clearCacheAndBroadcast($asnaf->tahun);
     }
 
-    /**
-     * Clear statistics cache and broadcast event.
-     */
-    private function clearCacheAndNotify($tahun): void
+    public function clearCacheAndBroadcast($tahun): void
     {
-        $cacheKey = "mustahik_stats_summary_{$tahun}";
-        Cache::forget($cacheKey);
+        Log::debug("Observer: clearCacheAndBroadcast for year: {$tahun}");
         
-        Log::info("Mustahik Stats Cache Cleared for year: {$tahun}");
+        try {
+            $cacheKey = "mustahik_stats_summary_{$tahun}";
+            Cache::forget($cacheKey);
+            Log::info("Mustahik Stats Cache Cleared: {$tahun}");
 
-        // Broadcast to frontend
-        broadcast(new MustahikUpdated($tahun));
+            broadcast(new MustahikUpdated($tahun));
+        } catch (\Exception $e) {
+            Log::error("Observer Error: " . $e->getMessage());
+        }
     }
 }

@@ -35,6 +35,7 @@ import {
 import { useSignatureRule } from '../hooks/useSignatureRule';
 import PrintLayout from '../components/PrintLayout';
 import { usePagePrint } from '../hooks/usePagePrint';
+import SedekahAnalytics from '../components/SedekahAnalytics';
 
 // ---- SIMULATED USERS (Moved outside for initialization access) ----
 const SIMULATED_USERS = [
@@ -640,11 +641,20 @@ const RWAggregationView = ({ month, year, isPrintMode = false, signer, activeTab
                 >
                     <ArrowRight size={14} className="me-2" /> DATA PENGELUARAN
                 </button>
+                <button
+                    className={`btn btn-sm fw-bold px-4 ${activeTab === 'analytics' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ borderRadius: '8px' }}
+                    onClick={() => setActiveTab('analytics')}
+                >
+                    <Activity size={14} className="me-2" /> ANALISA & AI
+                </button>
             </div>
 
             {/* CONTENT BASED ON TAB */}
             {activeTab === 'pengeluaran' ? (
                 <PengeluaranTable month={month} year={year} />
+            ) : activeTab === 'analytics' ? (
+                <SedekahAnalytics />
             ) : (
                 <>
                     {/* AUDIT MODAL / VIEW */}

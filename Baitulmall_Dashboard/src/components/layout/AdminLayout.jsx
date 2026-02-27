@@ -36,6 +36,7 @@ const AdminLayout = ({ children }) => {
             <Sidebar />
 
             <div className="container-fluid page-body-wrapper" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'column' }}>
+                <Navbar />
                 <main className="main-panel" style={{ flex: 1, marginTop: 0, display: 'flex', flexDirection: 'column' }}>
                     <div className="content-wrapper">
                         {children || <Outlet />}

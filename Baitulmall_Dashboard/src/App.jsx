@@ -11,6 +11,7 @@ const ZakatFitrah = lazy(() => import('./pages/ZakatFitrah'));
 const Sedekah = lazy(() => import('./pages/Sedekah'));
 const Santunan = lazy(() => import('./pages/Santunan'));
 const ZakatMall = lazy(() => import('./pages/ZakatMall'));
+const ZakatProduktif = lazy(() => import('./pages/ZakatProduktif'));
 const Kepengurusan = lazy(() => import('./pages/Kepengurusan'));
 const KepengurusanLanding = lazy(() => import('./pages/KepengurusanLanding'));
 const KepengurusanTakmir = lazy(() => import('./pages/KepengurusanTakmir'));
@@ -34,6 +35,9 @@ const Etalase = lazy(() => import('./pages/Etalase'));
 const ProductManagement = lazy(() => import('./pages/ProductManagement'));
 const PublicTransparency = lazy(() => import('./pages/PublicTransparency'));
 const TataKelola = lazy(() => import('./pages/TataKelola'));
+const TataKelolaZakatFitrah = lazy(() => import('./pages/TataKelolaZakatFitrah'));
+const TataKelolaZakatProduktif = lazy(() => import('./pages/TataKelolaZakatProduktif'));
+const PersonCentricDashboard = lazy(() => import('./pages/PersonCentricDashboard'));
 
 
 const App = () => {
@@ -65,6 +69,8 @@ const App = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/tatakelola" element={<TataKelola />} />
+            <Route path="/tatakelola/zakat-fitrah" element={<TataKelolaZakatFitrah />} />
+            <Route path="/tatakelola/zakat-produktif" element={<TataKelolaZakatProduktif />} />
 
             {/* Admin Routes with Layout */}
             <Route element={<AdminLayout />}>
@@ -76,6 +82,7 @@ const App = () => {
               <Route path="/santunan" element={<Santunan />} />
 
               <Route path="/zakat-mall" element={<ZakatMall />} />
+              <Route path="/zakat-produktif" element={<ZakatProduktif />} />
               <Route path="/kepengurusan" element={<KepengurusanLanding />} />
               <Route path="/kepengurusan-baitulmall" element={<Kepengurusan />} />
               <Route path="/kepengurusan-takmir" element={<KepengurusanTakmir />} />
@@ -100,6 +107,7 @@ const App = () => {
               <Route path="/secretariat" element={<Secretariat />} />
               {/* Etalase moved to public */}
               <Route path="/product-management" element={<ProductManagement />} />
+              <Route path="/sdm/overview" element={<PersonCentricDashboard />} />
 
               <Route path="/preference" element={<UserPreference />} />
               <Route path="/settings" element={<SettingPage />} />

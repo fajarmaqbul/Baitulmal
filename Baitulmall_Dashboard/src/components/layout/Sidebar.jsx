@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { LayoutDashboard, UsersRound, HeartHandshake, Briefcase, Baby, Settings, LogOut, HandCoins, UserCog, MapPin, Calendar, Landmark, Box, ArrowLeftRight, MessageSquare, Shield, FileText, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, UsersRound, HeartHandshake, Briefcase, Baby, Settings, LogOut, HandCoins, UserCog, MapPin, Calendar, Landmark, Box, ArrowLeftRight, MessageSquare, Shield, FileText, ShoppingBag, Globe, BookOpen, Scale } from 'lucide-react';
 import { logout } from '../../services/authApi';
 import { useRole, ROLES } from '../../contexts/RoleContext';
 
@@ -59,6 +59,17 @@ const Sidebar = () => {
                                 <Briefcase size={18} />
                             </span>
                             <span className="menu-title">Zakat Mal</span>
+                        </NavLink>
+                    </li>
+                )}
+
+                {hasPermission('Zakat Produktif') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/zakat-produktif" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                                <Landmark size={18} />
+                            </span>
+                            <span className="menu-title">Zakat Produktif</span>
                         </NavLink>
                     </li>
                 )}
@@ -131,6 +142,18 @@ const Sidebar = () => {
                     </li>
                 )}
 
+                {hasPermission('Kepengurusan') && (
+                    <li className="nav-item menu-items">
+                        <NavLink to="/sdm/overview" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                                <UsersRound size={18} />
+                            </span>
+                            <span className="menu-title">Database SDM (Warga)</span>
+                            <span style={{ marginLeft: '10px', fontSize: '10px', background: 'var(--primary)', padding: '2px 6px', borderRadius: '10px', color: '#fff' }}>Baru</span>
+                        </NavLink>
+                    </li>
+                )}
+
                 {hasPermission('Data Asnaf') && (
                     <li className="nav-item menu-items">
                         <NavLink to="/asnaf" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -191,6 +214,40 @@ const Sidebar = () => {
                             <ShoppingBag size={18} />
                         </span>
                         <span className="menu-title">Etalase UMKM</span>
+                    </NavLink>
+                </li>
+
+                <li className="nav-category">PORTAL PUBLIK</li>
+                <li className="nav-item menu-items">
+                    <NavLink to="/tatakelola" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(0, 144, 231, 0.1)', color: 'var(--primary)' }}>
+                            <BookOpen size={18} />
+                        </span>
+                        <span className="menu-title">Tata Kelola Umum</span>
+                    </NavLink>
+                </li>
+                <li className="nav-item menu-items">
+                    <NavLink to="/tatakelola/zakat-fitrah" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(0, 210, 91, 0.1)', color: 'var(--success)' }}>
+                            <Scale size={18} />
+                        </span>
+                        <span className="menu-title">Tata Kelola ZF</span>
+                    </NavLink>
+                </li>
+                <li className="nav-item menu-items">
+                    <NavLink to="/tatakelola/zakat-produktif" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(255, 171, 0, 0.08)', color: 'var(--warning)' }}>
+                            <Briefcase size={18} />
+                        </span>
+                        <span className="menu-title">Tata Kelola Produktif</span>
+                    </NavLink>
+                </li>
+                <li className="nav-item menu-items">
+                    <NavLink to="/public" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <span className="menu-icon" style={{ background: 'rgba(255, 171, 0, 0.08)', color: 'var(--warning)' }}>
+                            <Globe size={18} />
+                        </span>
+                        <span className="menu-title">Portal Transparansi</span>
                     </NavLink>
                 </li>
 

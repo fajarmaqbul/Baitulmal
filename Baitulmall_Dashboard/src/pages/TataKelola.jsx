@@ -120,67 +120,63 @@ const TataKelola = () => {
             scrollBehavior: 'smooth'
         }}>
             {/* Navbar */}
-            <nav style={{
+            <nav className="glass-nav" style={{
                 position: 'fixed',
                 top: 0,
                 left: 0,
                 right: 0,
                 zIndex: 1000,
-                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                background: 'rgba(10, 10, 10, 0.8)',
+                background: 'rgba(5, 5, 5, 0.7)',
                 backdropFilter: 'blur(20px)',
-                height: '64px',
+                height: '72px',
                 display: 'flex',
                 alignItems: 'center',
-                padding: '0 2.5rem'
+                padding: '0 3rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
                     <div style={{
-                        width: '32px',
-                        height: '32px',
+                        width: '36px',
+                        height: '36px',
                         background: 'var(--primary)',
-                        borderRadius: '8px',
+                        borderRadius: '10px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        <Heart size={16} color="white" fill="currentColor" />
+                        <Heart size={20} color="white" fill="currentColor" />
                     </div>
                     <h3 style={{
-                        fontWeight: 800,
-                        fontSize: '1.125rem',
+                        fontWeight: 900,
+                        fontSize: '1.25rem',
                         margin: 0,
-                        letterSpacing: '-0.05em',
+                        letterSpacing: '-0.04em',
                         color: 'white'
                     }}>
                         Baitulmal<span style={{ color: 'var(--primary)' }}> Fajar Maqbul</span>
                     </h3>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                    <a href="/public" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a1a1aa', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = 'white'} onMouseOut={(e) => e.target.style.color = '#a1a1aa'}>Public</a>
-                    <a href="/tatakelola" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'white', textDecoration: 'none' }}>Tata Kelola</a>
-                    <a href="/etalase" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a1a1aa', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = 'white'} onMouseOut={(e) => e.target.style.color = '#a1a1aa'}>Etalase</a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
+                    <a href="/public" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = 'white'} onMouseOut={(e) => e.target.style.color = '#94a3b8'}>Public</a>
+                    <a href="/tatakelola" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'white', textDecoration: 'none', borderBottom: '2px solid var(--primary)', paddingBottom: '4px' }}>Tata Kelola</a>
+                    <a href="/tatakelola/zakat-fitrah" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = 'white'} onMouseOut={(e) => e.target.style.color = '#94a3b8'}>Zakat Fitrah</a>
+                    <a href="/tatakelola/zakat-produktif" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = 'white'} onMouseOut={(e) => e.target.style.color = '#94a3b8'}>Zakat Produktif</a>
+                    <a href="/etalase" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = 'white'} onMouseOut={(e) => e.target.style.color = '#94a3b8'}>Etalase</a>
                     <a href="/login" style={{
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
+                        padding: '10px 20px',
+                        borderRadius: '12px',
+                        background: 'var(--primary)',
+                        fontSize: '0.8rem',
+                        fontWeight: 800,
                         color: 'white',
                         textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'all 0.2s'
-                    }} onMouseOver={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'} onMouseOut={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.05)'}>
-                        Admin <ArrowRight size={12} />
-                    </a>
+                        boxShadow: '0 8px 16px -4px rgba(59, 130, 246, 0.5)'
+                    }}>ADMIN PORTAL</a>
                 </div>
             </nav>
 
-            <div className="page-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '8rem 2rem 2rem' }}>
+            <div className="page-container" style={{ width: '100%', maxWidth: '1600px', margin: '0 auto', padding: '8rem 4rem 4rem' }}>
                 {/* Hero Section */}
                 <div style={{ textAlign: 'center', marginBottom: '6rem' }}>
                     <div style={{
@@ -296,7 +292,7 @@ const TataKelola = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
                         <WorkflowCard
                             number="1"
                             title="Perencanaan"
@@ -383,7 +379,7 @@ const TataKelola = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
                         <WorkflowCard
                             number="1"
                             title="Identifikasi & Seleksi"
@@ -421,30 +417,28 @@ const TataKelola = () => {
                                 "Dana bergulir & Akad"
                             ]}
                         />
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                            <WorkflowCard
-                                number="4"
-                                title="Pendampingan"
-                                icon={Activity}
-                                color="info"
-                                steps={[
-                                    "Kunjungan berkala (Mentoring)",
-                                    "Laporan perkembangan usaha",
-                                    "Evaluasi omzet bulanan"
-                                ]}
-                            />
-                            <WorkflowCard
-                                number="5"
-                                title="Exit Strategy"
-                                icon={ArrowRight}
-                                color="primary"
-                                steps={[
-                                    "Verifikasi kemandirian ekonomi",
-                                    "Naik status: Mustahik → Muzaki",
-                                    "Replikasi ke penerima baru"
-                                ]}
-                            />
-                        </div>
+                        <WorkflowCard
+                            number="4"
+                            title="Pendampingan"
+                            icon={Activity}
+                            color="info"
+                            steps={[
+                                "Kunjungan berkala (Mentoring)",
+                                "Laporan perkembangan usaha",
+                                "Evaluasi omzet bulanan"
+                            ]}
+                        />
+                        <WorkflowCard
+                            number="5"
+                            title="Exit Strategy"
+                            icon={ArrowRight}
+                            color="primary"
+                            steps={[
+                                "Verifikasi kemandirian ekonomi",
+                                "Naik status: Mustahik → Muzaki",
+                                "Replikasi ke penerima baru"
+                            ]}
+                        />
                     </div>
                 </section>
 

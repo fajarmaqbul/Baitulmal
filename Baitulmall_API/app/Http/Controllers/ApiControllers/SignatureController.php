@@ -165,16 +165,29 @@ class SignatureController extends Controller
         }
 
         if ($bestMatch) {
+            $left = $bestMatch->leftSigner;
+            $right = $bestMatch->rightSigner;
+
+            // DYNAMIC SYNC: If signer is null but we have a rule, try to find the person currently in that role
+            // Logic: if rule has "Ketua" but no left_signer_id, find who is "Ketua" in the structure relevant to the category/RT
+            if (!$left) {
+                $left = $this->lookupDynamicSigner($category, $rt, 'Ketua');
+            }
+            if (!$right) {
+                // Heuristic: common right signer is Bendahara or Sekretaris
+                $right = $this->lookupDynamicSigner($category, $rt, 'Bendahara');
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'left' => $bestMatch->leftSigner,
-                    'right' => $bestMatch->rightSigner,
-                    'rule_id' => $bestMatch->id
+                    'left' => $left,
+                    'right' => $right,
+                    'rule_id' => $bestMatch->id,
+                    'is_dynamic' => true
                 ]
             ]);
         }
-
         return response()->json([
             'success' => true,
             'data' => [
@@ -183,5 +196,35 @@ class SignatureController extends Controller
                 'message' => 'No matching rule found'
             ]
         ]);
+    }
+
+    /**
+     * Helper to find a person in a specific role based on context
+     */
+    private function lookupDynamicSigner($category, $rt, $targetRole)
+    {
+        // Guess structure code based on category or RT
+        // Optimization: In a real system, we'd have a mapping table
+        $structCode = 'BAITULMALL_2023'; // Default
+        if ($category === 'Amil' || $category === 'TAKMIR') $structCode = 'TAKMIR_2023';
+        if ($rt !== 'ALL') $structCode = "RT_{$rt}_2023";
+
+        $assignment = \App\Models\Assignment::with('person')
+            ->where('status', 'Aktif')
+            ->where('jabatan', 'like', "%{$targetRole}%")
+            ->whereHas('structure', function($q) use ($structCode) {
+                $q->where('kode_struktur', $structCode);
+            })
+            ->first();
+
+        if ($assignment && $assignment->person) {
+            return (object)[
+                'nama_pejabat' => $assignment->person->nama_lengkap,
+                'jabatan' => $assignment->jabatan,
+                'nip' => $assignment->no_sk // Use SK as fallback for ID/NIP
+            ];
+        }
+
+        return null;
     }
 }

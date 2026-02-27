@@ -13,7 +13,8 @@ import {
     Box,
     ArrowLeftRight,
     ShoppingBag,
-    Globe
+    Globe,
+    BookOpen
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -28,7 +29,9 @@ const Sidebar = () => {
         { name: 'Manajemen Asnaf', icon: <Users size={20} />, path: '/asnaf' },
         { name: 'Kepengurusan', icon: <Wallet size={20} />, path: '/kepengurusan' },
         { name: 'Etalase UMKM', icon: <ShoppingBag size={20} />, path: '/etalase' },
-        { name: 'Lihat Public', icon: <Globe size={20} />, path: '/public' },
+        { name: 'Tata Kelola Umum', icon: <BookOpen size={20} />, path: '/tatakelola' },
+        { name: 'Tata Kelola ZF', icon: <Scale size={20} />, path: '/tatakelola/zakat-fitrah' },
+        { name: 'Portal Publik', icon: <Globe size={20} />, path: '/public' },
     ];
 
     return (

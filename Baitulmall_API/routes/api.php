@@ -13,6 +13,8 @@ use App\Http\Controllers\ApiControllers\AgendaPostController;
 use App\Http\Controllers\ApiControllers\AuthController;
 use App\Http\Controllers\ApiControllers\RoleController;
 use App\Http\Controllers\ApiControllers\MustahikStatsController;
+use App\Http\Controllers\ApiControllers\SedekahAnalyticsController;
+use App\Http\Controllers\ApiControllers\MustahikScoringController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 
@@ -102,6 +104,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/productive-candidates', [\App\Http\Controllers\Api\V1\AsnafAnalyticsController::class, 'getProductiveZakatCandidates']);
     });
 
+    // Mustahik AI Scoring
+    Route::get('asnaf/scoring', [MustahikScoringController::class, 'calculate']);
+
     Route::get('asnaf/{id}', [AsnafController::class, 'show']);
 
     // ========== Muzaki (Zakat Payers) - Public Read ==========
@@ -131,6 +136,16 @@ Route::prefix('v1')->group(function () {
 
     // ========== Sedekah & Santunan ==========
     Route::get('sedekah/summary', [SedekahController::class, 'summary']);
+    Route::get('analytics/capacity', [SedekahAnalyticsController::class, 'capacity']);
+    Route::get('analytics/loyalty', [SedekahAnalyticsController::class, 'loyalty']);
+    Route::get('analytics/participation', [SedekahAnalyticsController::class, 'participation']);
+    Route::get('analytics/runway', [SedekahAnalyticsController::class, 'runway']);
+
+    // ========== Zakat Produktif (Modal Usaha) ==========
+    Route::get('zakat-produktif/summary', [\App\Http\Controllers\ApiControllers\ZakatProduktifController::class, 'getSummary']);
+    Route::apiResource('zakat-produktif', \App\Http\Controllers\ApiControllers\ZakatProduktifController::class);
+    Route::post('zakat-produktif/{id}/monitoring', [\App\Http\Controllers\ApiControllers\ZakatProduktifController::class, 'storeMonitoring']);
+    
     Route::get('santunan/summary', [SantunanController::class, 'summary']);
     Route::get('santunan/activities', [SantunanController::class, 'getActivities']);
     Route::apiResource('santunan-donations', \App\Http\Controllers\ApiControllers\SantunanDonationController::class);
@@ -139,6 +154,7 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('santunan', SantunanController::class);
 
     // ========== SDM (Human Resources) ==========
+    Route::get('people/overview', [\App\Http\Controllers\ApiControllers\PersonController::class, 'overview']);
     Route::apiResource('people', \App\Http\Controllers\ApiControllers\PersonController::class);
     Route::apiResource('structures', \App\Http\Controllers\ApiControllers\OrganizationStructureController::class);
     Route::apiResource('assignments', \App\Http\Controllers\ApiControllers\AssignmentController::class);

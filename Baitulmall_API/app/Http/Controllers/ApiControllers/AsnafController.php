@@ -43,11 +43,12 @@ class AsnafController extends Controller
             $query->where('tahun', $request->tahun);
         }
 
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        } else {
-            $query->where('status', 'active'); // Default: only active
+        // Default: only active status if not specified
+        if (!$request->has('status')) {
+            $query->where('status', 'active');
         }
+
+        $query->orderBy('id', 'desc');
 
         // Pagination
         $perPage = $request->get('per_page', 50);
