@@ -7,16 +7,7 @@
         "api/health.php": {
             "runtime": "vercel-php@0.7.1"
         },
-        "api/debug.php": {
-            "runtime": "vercel-php@0.7.1"
-        },
-        "api/db_check.php": {
-            "runtime": "vercel-php@0.7.1"
-        },
         "api/test.php": {
-            "runtime": "vercel-php@0.7.1"
-        },
-        "api/env_check.php": {
             "runtime": "vercel-php@0.7.1"
         }
     },
@@ -28,18 +19,6 @@
         {
             "src": "/health",
             "dest": "api/health.php"
-        },
-        {
-            "src": "/debug",
-            "dest": "api/debug.php"
-        },
-        {
-            "src": "/db-check",
-            "dest": "api/db_check.php"
-        },
-        {
-            "src": "/env-check",
-            "dest": "api/env_check.php"
         },
         {
             "src": "/(.*)",
