@@ -16,7 +16,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })
     ->registered(function ($app) {
         // Force register View & Filesystem services early on Vercel to avoid BindingResolutionException
-        if (isset($_SERVER['VERCEL']) || getenv('VERCEL') || isset($_SERVER['VERCEL_URL'])) {
+        $isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
+        if ($isVercel) {
             $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
             $app->register(\Illuminate\View\ViewServiceProvider::class);
 
