@@ -41,6 +41,11 @@ if ($isVercel) {
     }
     $app->useBootstrapPath($bootstrapPath);
     
+    // Force PackageManifest to use the new bootstrap path
+    $app->singleton(\Illuminate\Foundation\PackageManifest::class, fn () => new \Illuminate\Foundation\PackageManifest(
+        new \Illuminate\Filesystem\Filesystem, $app->basePath(), $app->getCachedPackagesPath()
+    ));
+    
     $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
     $app->register(\Illuminate\View\ViewServiceProvider::class);
 }
