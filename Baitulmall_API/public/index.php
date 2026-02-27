@@ -8,8 +8,11 @@ define('LARAVEL_START', microtime(true));
 // On Vercel: prepare writable paths BEFORE anything else
 $isVercel = getenv('VERCEL') === '1' || isset($_ENV['VERCEL']);
 if ($isVercel) {
+    $basePath = dirname(__DIR__);
     $tmpStorage = '/tmp/storage';
     $tmpBootstrap = '/tmp/bootstrap';
+    
+    // Create all required directories in /tmp
     $dirs = [
         $tmpStorage,
         $tmpStorage . '/framework/sessions',
@@ -33,16 +36,15 @@ if ($isVercel) {
     putenv("APP_ROUTES_CACHE={$tmpBootstrap}/cache/routes-v7.php");
     putenv("APP_EVENTS_CACHE={$tmpBootstrap}/cache/events.php");
     
-    // Create empty .env file so Dotenv doesn't throw
-    $envFile = dirname(__DIR__) . '/.env';
-    if (!file_exists($envFile)) {
-        @file_put_contents($envFile, "# Vercel - env vars are set via Vercel dashboard\n");
+    // Create empty .env in /tmp (Vercel filesystem is read-only)
+    $tmpEnv = '/tmp/.env';
+    if (!file_exists($tmpEnv)) {
+        file_put_contents($tmpEnv, "# Vercel runtime - env vars set via dashboard\n");
     }
-}
-
-// Determine if the application is in maintenance mode...
-if (!$isVercel && file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
+    
+    // Tell Laravel to use /tmp/.env by setting DOTENV_PATH
+    // Laravel's DetectEnvironment uses $app->environmentPath() which defaults to basePath
+    // We need to override this AFTER app creation
 }
 
 // Register the Composer autoloader...
@@ -52,9 +54,10 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-// Override storage path AFTER app is created but BEFORE handling request
+// Override paths AFTER app is created but BEFORE handling request
 if ($isVercel) {
     $app->useStoragePath('/tmp/storage');
+    $app->useEnvironmentPath('/tmp'); // Point .env loading to /tmp where we created dummy .env
 }
 
 $app->handleRequest(Request::capture());
