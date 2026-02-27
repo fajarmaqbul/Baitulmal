@@ -4,7 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
-$app = Application::configure(basePath: dirname(__DIR__))
+return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -16,23 +16,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Force JSON for all API requests
+        //
     })
     ->create();
-
-$isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
-if ($isVercel) {
-    $tmpPath = '/tmp/storage';
-    if (!is_dir($tmpPath)) {
-        @mkdir($tmpPath, 0777, true);
-        @mkdir($tmpPath . '/framework/sessions', 0777, true);
-        @mkdir($tmpPath . '/framework/views', 0777, true);
-        @mkdir($tmpPath . '/framework/cache', 0777, true);
-        @mkdir($tmpPath . '/framework/cache/data', 0777, true);
-        @mkdir($tmpPath . '/app/public', 0777, true);
-        @mkdir($tmpPath . '/logs', 0777, true);
-    }
-    $app->useStoragePath($tmpPath);
-}
-
-return $app;
