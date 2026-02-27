@@ -26,7 +26,12 @@ $app = Application::configure(basePath: dirname(__DIR__))
         | Remap Storage for Vercel / Railway
         |--------------------------------------------------------------------------
         */
-        if (isset($_SERVER['VERCEL_URL']) || isset($_SERVER['RAILWAY_ENVIRONMENT']) || env('APP_ENV') === 'production') {
+        $isVercel = isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL']) || getenv('VERCEL') || isset($_SERVER['VERCEL_URL']);
+        $isRailway = isset($_SERVER['RAILWAY_ENVIRONMENT']) || getenv('RAILWAY_ENVIRONMENT');
+        $isProduction = env('APP_ENV') === 'production';
+        
+        // If we are on Vercel/Railway OR the current storage is not writable, force /tmp/storage
+        if ($isVercel || $isRailway || $isProduction || !is_writable(storage_path())) {
             $storagePath = '/tmp/storage';
             if (!is_dir($storagePath . '/framework/views')) {
                 @mkdir($storagePath . '/framework/sessions', 0777, true);
