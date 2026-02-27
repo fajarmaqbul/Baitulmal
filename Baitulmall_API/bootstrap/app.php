@@ -15,7 +15,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Force JSON responses for all exceptions on Vercel to avoid view engine issues during early boot
+        if (isset($_SERVER['VERCEL_URL'])) {
+            $exceptions->shouldRenderHtml(fn() => false);
+        }
     })
     ->booting(function ($app) {
         /*
