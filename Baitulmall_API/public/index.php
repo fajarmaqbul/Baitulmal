@@ -5,10 +5,11 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// On Vercel: create /tmp/storage BEFORE bootstrapping Laravel
+// On Vercel: prepare writable paths BEFORE anything else
 $isVercel = getenv('VERCEL') === '1' || isset($_ENV['VERCEL']);
 if ($isVercel) {
     $tmpStorage = '/tmp/storage';
+    $tmpBootstrap = '/tmp/bootstrap';
     $dirs = [
         $tmpStorage,
         $tmpStorage . '/framework/sessions',
@@ -17,20 +18,25 @@ if ($isVercel) {
         $tmpStorage . '/framework/cache/data',
         $tmpStorage . '/app/public',
         $tmpStorage . '/logs',
+        $tmpBootstrap . '/cache',
     ];
     foreach ($dirs as $dir) {
         if (!is_dir($dir)) {
             @mkdir($dir, 0777, true);
         }
     }
-    // Set env var so Laravel picks it up during bootstrap
-    putenv("APP_STORAGE_PATH={$tmpStorage}");
-    $_ENV['APP_STORAGE_PATH'] = $tmpStorage;
-    $_SERVER['APP_STORAGE_PATH'] = $tmpStorage;
+    
+    // Set cache path env vars BEFORE Laravel loads
+    // These are read by Application::normalizeCachePath() 
+    putenv("APP_SERVICES_CACHE={$tmpBootstrap}/cache/services.php");
+    putenv("APP_PACKAGES_CACHE={$tmpBootstrap}/cache/packages.php");
+    putenv("APP_CONFIG_CACHE={$tmpBootstrap}/cache/config.php");
+    putenv("APP_ROUTES_CACHE={$tmpBootstrap}/cache/routes-v7.php");
+    putenv("APP_EVENTS_CACHE={$tmpBootstrap}/cache/events.php");
 }
 
 // Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+if (!$isVercel && file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
 }
 
