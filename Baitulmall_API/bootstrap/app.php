@@ -16,7 +16,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Default exceptions
+        $exceptions->shouldRenderHtmlWhen(fn () => false);
     })
     ->create();
 
