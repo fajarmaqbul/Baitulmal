@@ -17,4 +17,21 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-$app->handleRequest(Request::capture());
+try {
+    $app->handleRequest(Request::capture());
+} catch (\Throwable $e) {
+    if (getenv('VERCEL')) {
+        header('Content-Type: application/json');
+        header('Access-Control-Allow-Origin: *'); // Force CORS so we can see the error in browser
+        http_response_code(500);
+        echo json_encode([
+            'error' => true,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => explode("\n", $e->getTraceAsString())
+        ]);
+        exit;
+    }
+    throw $e;
+}
