@@ -18,10 +18,17 @@ $checks = [
     ],
     'files' => [
         'vendor_exists' => is_dir(__DIR__ . '/../vendor'),
+        'tmp_exists' => is_dir('/tmp'),
         'tmp_writable' => is_writable('/tmp'),
-        'storage_writable' => is_writable('/tmp/storage') || @mkdir('/tmp/storage_test'),
+        'storage_dir_exists' => is_dir('/tmp/storage'),
+        'storage_writable' => is_writable('/tmp/storage'),
+        'mkdir_test_result' => @mkdir('/tmp/storage_test_' . time()),
+        'file_put_test' => @file_put_contents('/tmp/test.txt', 'test') !== false,
         'bootstrap_app' => file_exists(__DIR__ . '/../bootstrap/app.php'),
     ],
+    'laravel' => [
+        'is_bootstrapped' => isset($GLOBALS['app']),
+    ]
 ];
 
 echo json_encode($checks, JSON_PRETTY_PRINT);
