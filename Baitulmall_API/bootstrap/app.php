@@ -22,6 +22,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 $isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
 if ($isVercel) {
+    // Force register these to prevent "Target class [view] does not exist" errors on Vercel
+    $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
+    $app->register(\Illuminate\View\ViewServiceProvider::class);
+
     $tmpPath = '/tmp/storage';
     if (!is_dir($tmpPath)) {
         @mkdir($tmpPath, 0777, true);
@@ -33,9 +37,6 @@ if ($isVercel) {
         @mkdir($tmpPath . '/logs', 0777, true);
     }
     $app->useStoragePath($tmpPath);
-    
-    // For Laravel 11, we should also try to set these via env or binding if possible
-    // but the most important is the storage path for sessions/cache
 }
 
 return $app;
