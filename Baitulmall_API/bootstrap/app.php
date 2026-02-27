@@ -22,10 +22,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 $isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
 if ($isVercel) {
-    // Force register these to prevent "Target class [view] does not exist" errors on Vercel
-    $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
-    $app->register(\Illuminate\View\ViewServiceProvider::class);
-
     $tmpPath = '/tmp/storage';
     if (!is_dir($tmpPath)) {
         @mkdir($tmpPath, 0777, true);
