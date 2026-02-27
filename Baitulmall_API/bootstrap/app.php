@@ -33,9 +33,6 @@ if (isset($_SERVER['VERCEL_URL']) || isset($_SERVER['RAILWAY_ENVIRONMENT']) || e
         @mkdir($storagePath . '/app/public', 0777, true);
     }
     $app->useStoragePath($storagePath);
-    
-    // Force config override for view compiled path
-    config(['view.compiled' => $storagePath . '/framework/views']);
 }
 
 return $app;
