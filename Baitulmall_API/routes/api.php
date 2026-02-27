@@ -35,7 +35,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Bridge for Migration/Seeding on Vercel (Temporary)
-    Route::get('system/deploy-seed', function() {
+    Route::get('deploy', function() {
         if (request('token') !== 'BAITULMALL_DEPLOY_2026') return response('Unauthorized', 401);
         
         try {
