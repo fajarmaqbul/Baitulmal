@@ -42,7 +42,11 @@ return new class extends Migration
         }
 
         // 3. Drop Old
-        Schema::dropIfExists('asnaf');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('DROP TABLE IF EXISTS asnaf CASCADE');
+        } else {
+            Schema::dropIfExists('asnaf');
+        }
 
         // 4. Rename New
         Schema::rename('asnaf_new', 'asnaf');
