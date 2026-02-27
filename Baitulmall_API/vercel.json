@@ -10,9 +10,6 @@
         "api/debug.php": {
             "runtime": "vercel-php@0.7.1"
         },
-        "api/check.php": {
-            "runtime": "vercel-php@0.7.1"
-        },
         "api/test.php": {
             "runtime": "vercel-php@0.7.1"
         }
@@ -31,17 +28,14 @@
             "dest": "api/debug.php"
         },
         {
-            "src": "/api-check",
-            "dest": "api/check.php"
-        },
-        {
             "src": "/(.*)",
             "dest": "api/index.php"
         }
     ],
     "env": {
+        "APP_NAME": "Baitulmall Masjid Kandri",
         "APP_ENV": "production",
-        "APP_DEBUG": "true",
+        "APP_DEBUG": "false",
         "LOG_CHANNEL": "stderr",
         "DB_CONNECTION": "pgsql",
         "VERCEL": "1"
