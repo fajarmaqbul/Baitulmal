@@ -20,15 +20,17 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 /*
 |--------------------------------------------------------------------------
-| Remap Storage for Vercel
+| Remap Storage for Vercel / Railway
 |--------------------------------------------------------------------------
 */
-if (isset($_SERVER['VERCEL_URL']) || env('APP_ENV') === 'production') {
+if (isset($_SERVER['VERCEL_URL']) || isset($_SERVER['RAILWAY_ENVIRONMENT']) || env('APP_ENV') === 'production') {
     $storagePath = '/tmp/storage';
     if (!is_dir($storagePath . '/framework/views')) {
         @mkdir($storagePath . '/framework/sessions', 0777, true);
         @mkdir($storagePath . '/framework/views', 0777, true);
         @mkdir($storagePath . '/framework/cache', 0777, true);
+        @mkdir($storagePath . '/framework/cache/data', 0777, true);
+        @mkdir($storagePath . '/app/public', 0777, true);
     }
     $app->useStoragePath($storagePath);
 }
