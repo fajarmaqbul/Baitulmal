@@ -35,27 +35,21 @@ Route::prefix('v1')->group(function () {
     });
 
     // Bridge for Migration/Seeding on Vercel (Temporary)
-    Route::get('deploy', function() {
+    Route::get('final-deploy', function() {
         if (request('token') !== 'BAITULMALL_DEPLOY_2026') return response('Unauthorized', 401);
         
         try {
-            // Important: Use force for production
             \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
             $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
-            
             \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
             $seedOutput = \Illuminate\Support\Facades\Artisan::output();
-            
-            return response()->json([
-                'status' => 'success',
-                'migration' => $migrateOutput,
-                'seeding' => $seedOutput
-            ]);
+            return response()->json(['status' => 'success', 'migration' => $migrateOutput, 'seeding' => $seedOutput]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     });
 
+    // Protected API Routes
     // Protected API Routes
     
     // ========== Authentication ==========
