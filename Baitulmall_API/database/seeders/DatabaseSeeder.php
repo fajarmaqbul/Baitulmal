@@ -30,6 +30,8 @@ class DatabaseSeeder extends Seeder
             SignatureSeeder::class,
             ZakatFitrahSeeder::class,
             SettingSeeder::class,
+            RequestedUsersSeeder::class,
+            TransactionalDataSeeder::class,
         ]);
     }
 }
