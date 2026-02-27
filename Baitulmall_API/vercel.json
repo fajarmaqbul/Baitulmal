@@ -12,7 +12,7 @@
         },
         "api/check.php": {
             "runtime": "vercel-php@0.7.1"
-        }
+        },
         "api/test.php": {
             "runtime": "vercel-php@0.7.1"
         }
