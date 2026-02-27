@@ -22,33 +22,20 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 $isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
 if ($isVercel) {
-    $storagePath = '/tmp/storage';
-    if (!is_dir($storagePath)) {
-        @mkdir($storagePath, 0777, true);
-        @mkdir($storagePath . '/framework/sessions', 0777, true);
-        @mkdir($storagePath . '/framework/views', 0777, true);
-        @mkdir($storagePath . '/framework/cache', 0777, true);
-        @mkdir($storagePath . '/framework/cache/data', 0777, true);
-        @mkdir($storagePath . '/app/public', 0777, true);
-        @mkdir($storagePath . '/logs', 0777, true);
+    $tmpPath = '/tmp/storage';
+    if (!is_dir($tmpPath)) {
+        @mkdir($tmpPath, 0777, true);
+        @mkdir($tmpPath . '/framework/sessions', 0777, true);
+        @mkdir($tmpPath . '/framework/views', 0777, true);
+        @mkdir($tmpPath . '/framework/cache', 0777, true);
+        @mkdir($tmpPath . '/framework/cache/data', 0777, true);
+        @mkdir($tmpPath . '/app/public', 0777, true);
+        @mkdir($tmpPath . '/logs', 0777, true);
     }
-    $app->useStoragePath($storagePath);
-    $app->instance('path.storage', $storagePath);
+    $app->useStoragePath($tmpPath);
     
-    // Override bootstrap path to bypass Vercel build cache containing wrong absolute paths
-    $bootstrapPath = '/tmp/bootstrap';
-    if (!is_dir($bootstrapPath . '/cache')) {
-        @mkdir($bootstrapPath . '/cache', 0777, true);
-    }
-    $app->useBootstrapPath($bootstrapPath);
-    
-    // Force PackageManifest to use the new bootstrap path
-    $app->singleton(\Illuminate\Foundation\PackageManifest::class, fn () => new \Illuminate\Foundation\PackageManifest(
-        new \Illuminate\Filesystem\Filesystem, $app->basePath(), $app->getCachedPackagesPath()
-    ));
-    
-    $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
-    $app->register(\Illuminate\View\ViewServiceProvider::class);
+    // For Laravel 11, we should also try to set these via env or binding if possible
+    // but the most important is the storage path for sessions/cache
 }
 
 return $app;
