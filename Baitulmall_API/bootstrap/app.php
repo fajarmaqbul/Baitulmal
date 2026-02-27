@@ -14,29 +14,25 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
     })
-    ->registered(function ($app) {
-        // Force register View & Filesystem services early on Vercel to avoid BindingResolutionException
-        $isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
-        if ($isVercel) {
-            $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
-            $app->register(\Illuminate\View\ViewServiceProvider::class);
-
-            $storagePath = '/tmp/storage';
-            if (!is_dir($storagePath)) {
-                @mkdir($storagePath, 0777, true);
-                @mkdir($storagePath . '/framework/sessions', 0777, true);
-                @mkdir($storagePath . '/framework/views', 0777, true);
-                @mkdir($storagePath . '/framework/cache', 0777, true);
-                @mkdir($storagePath . '/framework/cache/data', 0777, true);
-                @mkdir($storagePath . '/app/public', 0777, true);
-                @mkdir($storagePath . '/logs', 0777, true);
-            }
-            $app->useStoragePath($storagePath);
-            
-            // Re-bind the paths in the container since we changed storage path
-            $app->instance('path.storage', $storagePath);
-        }
-    })
     ->create();
+
+$isVercel = getenv('VERCEL') === '1' || getenv('VERCEL_URL') !== false || isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL_URL']);
+if ($isVercel) {
+    $storagePath = '/tmp/storage';
+    if (!is_dir($storagePath)) {
+        @mkdir($storagePath, 0777, true);
+        @mkdir($storagePath . '/framework/sessions', 0777, true);
+        @mkdir($storagePath . '/framework/views', 0777, true);
+        @mkdir($storagePath . '/framework/cache', 0777, true);
+        @mkdir($storagePath . '/framework/cache/data', 0777, true);
+        @mkdir($storagePath . '/app/public', 0777, true);
+        @mkdir($storagePath . '/logs', 0777, true);
+    }
+    $app->useStoragePath($storagePath);
+    $app->instance('path.storage', $storagePath);
+    
+    $app->register(\Illuminate\Filesystem\FilesystemServiceProvider::class);
+    $app->register(\Illuminate\View\ViewServiceProvider::class);
+}
 
 return $app;
