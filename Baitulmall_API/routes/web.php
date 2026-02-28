@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Hash;
 
 Route::get('/', function () {
     return response()->json([
@@ -23,9 +24,32 @@ Route::get('urgent-sync', function() {
             echo "Step: Seeding...\n";
             \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
             return "SUCCESS: Seeding Complete. \n" . \Illuminate\Support\Facades\Artisan::output();
+        } elseif ($step === 'seed-only') {
+            // Seed tanpa UserFactory - bypass fake() error
+            echo "Step: Seeding (no factory)...\n";
+            // Create admin user directly
+            \App\Models\User::firstOrCreate(
+                ['email' => 'admin@baitulmall.com'],
+                ['name' => 'Admin Baitulmall', 'password' => Hash::make('password123'), 'remember_token' => \Illuminate\Support\Str::random(10)]
+            );
+            \App\Models\User::firstOrCreate(
+                ['email' => 'fajarmaqbulkandri@gmail.com'],
+                ['name' => 'Fajar Maqbul', 'password' => Hash::make('Kandri2026!'), 'remember_token' => \Illuminate\Support\Str::random(10)]
+            );
+            // Run seeders that don't use factories
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'RTSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'AsnafSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'SDMSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'SignatureSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'ZakatFitrahSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'SettingSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TransactionalDataSeeder', '--force' => true]);
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'UserAccountSeeder', '--force' => true]);
+            return "SUCCESS: Direct Seeding Complete.\n";
         }
         return "ERROR: Step not recognized.";
     } catch (\Exception $e) {
-        return "ERROR in $step: " . $e->getMessage();
+        return "ERROR in $step: " . $e->getMessage() . "\n" . $e->getTraceAsString();
     }
 });
+
