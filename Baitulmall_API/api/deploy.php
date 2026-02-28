@@ -74,9 +74,18 @@ try {
         foreach ($seeders as $seeder) {
             try {
                 \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => $seeder, '--force' => true]);
-                $results[] = "$seeder: OK";
+                $results[] = [
+                    'seeder' => $seeder,
+                    'status' => 'OK',
+                    'output' => \Illuminate\Support\Facades\Artisan::output()
+                ];
             } catch (\Throwable $e) {
-                $results[] = "$seeder: ERROR - " . $e->getMessage();
+                $results[] = [
+                    'seeder' => $seeder,
+                    'status' => 'ERROR',
+                    'message' => $e->getMessage(),
+                    'output' => \Illuminate\Support\Facades\Artisan::output()
+                ];
             }
         }
 
