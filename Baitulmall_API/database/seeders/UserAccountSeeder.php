@@ -16,7 +16,6 @@ class UserAccountSeeder extends Seeder
     {
         $this->command->info('Creating required user accounts...');
 
-        // 1. Super Admin
         $admin = User::updateOrCreate(
             ['email' => 'admin@baitulmall.com'],
             [
@@ -24,7 +23,16 @@ class UserAccountSeeder extends Seeder
                 'password' => Hash::make('password123'),
             ]
         );
+
+        $fajar = User::updateOrCreate(
+            ['email' => 'fajarmaqbulkandri@gmail.com'],
+            [
+                'name' => 'Fajar Maqbul',
+                'password' => Hash::make('Kandri2026!'), // Set a strong initial password
+            ]
+        );
         $this->command->info('✅ Super Admin: admin@baitulmall.com / password123');
+        $this->command->info('✅ Fajar Account: fajarmaqbulkandri@gmail.com / Kandri2026!');
 
         // Ensure Structures Exist (from SDMSeeder logic)
         $baitulmall = OrganizationStructure::firstOrCreate(

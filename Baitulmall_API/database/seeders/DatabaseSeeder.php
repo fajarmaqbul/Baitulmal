@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             RequestedUsersSeeder::class,
             TransactionalDataSeeder::class,
+            UserAccountSeeder::class,
         ]);
     }
 }
