@@ -82,6 +82,9 @@ class UserAccountSeeder extends Seeder
         $this->command->info('✅ 3 Bendahara created (password: bendahara123)');
         */
 
+        $password = Hash::make('rt123456');
+        $now = '2023-01-01'; // Use fixed date for consistency
+
         // 3. Koordinator RT (7 Orang)
         for ($i = 1; $i <= 7; $i++) {
             try {
@@ -104,11 +107,11 @@ class UserAccountSeeder extends Seeder
                     ['email' => $email],
                     [
                         'name' => $name,
-                        'password' => Hash::make('rt123456'), 
+                        'password' => $password, 
                     ]
                 );
 
-                $person = Person::firstOrCreate(
+                $person = Person::updateOrCreate(
                     ['nama_lengkap' => $name],
                     ['jenis_kelamin' => 'L', 'alamat_domisili' => "RT {$rtCode} Kandri", 'no_wa' => '08123456789']
                 );
@@ -124,7 +127,7 @@ class UserAccountSeeder extends Seeder
                     ],
                     [
                         'status' => 'Aktif',
-                        'tanggal_mulai' => now(),
+                        'tanggal_mulai' => $now,
                         'tipe_sk' => 'SK RT'
                     ]
                 );
