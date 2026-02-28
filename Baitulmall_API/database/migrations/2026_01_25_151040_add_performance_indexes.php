@@ -18,7 +18,6 @@ return new class extends Migration
 
         Schema::table('zakat_fitrah', function (Blueprint $table) {
             $table->index(['tahun', 'rt_id']);
-            $table->index('status_bayar');
         });
 
         Schema::table('zakat_malls', function (Blueprint $table) {
@@ -38,7 +37,6 @@ return new class extends Migration
 
         Schema::table('zakat_fitrah', function (Blueprint $table) {
             $table->dropIndex(['tahun', 'rt_id']);
-            $table->dropIndex(['status_bayar']);
         });
 
         Schema::table('zakat_malls', function (Blueprint $table) {
