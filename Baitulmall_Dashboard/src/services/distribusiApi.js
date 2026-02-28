@@ -41,3 +41,16 @@ export const deleteDistribusi = async (id) => {
         throw error;
     }
 };
+/**
+ * Delete multiple Distribution Records
+ * @param {Array} ids 
+ */
+export const deleteDistribusiBulk = async (ids) => {
+    try {
+        const response = await api.delete('/distribusi', { data: { ids } });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting bulk Distribusi:', error);
+        throw error;
+    }
+};

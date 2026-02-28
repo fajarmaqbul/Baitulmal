@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { fetchZakatFitrahList, fetchMuzakiStats, createZakatFitrah, updateZakatFitrah, deleteZakatFitrahApi } from '../services/zakatFitrahApi';
 import { fetchActiveSigner } from '../services/documentApi'; // Removed but keeping line for safe deletion if needed or just empty
-import { fetchDistribusi, saveDistribusi, deleteDistribusi } from '../services/distribusiApi';
+import { fetchDistribusi, saveDistribusi, deleteDistribusi, deleteDistribusiBulk } from '../services/distribusiApi';
 
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import PrintLayout from '../components/PrintLayout';
@@ -716,9 +716,7 @@ const ZakatFitrah = () => {
 
         setBulkDistDeleteModal(prev => ({ ...prev, loading: true }));
         try {
-            for (const id of selectedHistoryIds) {
-                await deleteDistribusi(id);
-            }
+            await deleteDistribusiBulk(selectedHistoryIds);
             setBulkDistDeleteModal({ open: false, loading: false });
             setSelectedHistoryIds([]);
             loadData();
