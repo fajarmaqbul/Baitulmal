@@ -84,49 +84,54 @@ class UserAccountSeeder extends Seeder
 
         // 3. Koordinator RT (7 Orang)
         for ($i = 1; $i <= 7; $i++) {
-            $rtCode = str_pad($i, 2, '0', STR_PAD_LEFT);
-            $kodeStruktur = "RT_{$rtCode}_2023";
-            
-            $structure = OrganizationStructure::firstOrCreate(
-                ['kode_struktur' => $kodeStruktur],
-                [
-                    'nama_struktur' => "Pengurus RT {$rtCode}",
-                    'tipe' => 'Struktural',
-                    'is_active' => 1
-                ]
-            );
+            try {
+                $rtCode = str_pad($i, 2, '0', STR_PAD_LEFT);
+                $kodeStruktur = "RT_{$rtCode}_2023";
+                
+                $structure = OrganizationStructure::firstOrCreate(
+                    ['kode_struktur' => $kodeStruktur],
+                    [
+                        'nama_struktur' => "Pengurus RT {$rtCode}",
+                        'tipe' => 'Struktural',
+                        'is_active' => 1
+                    ]
+                );
 
-            $email = "rt{$rtCode}@baitulmall.com";
-            $name = "Ketua RT {$rtCode}";
+                $email = "rt{$rtCode}@baitulmall.com";
+                $name = "Ketua RT {$rtCode}";
 
-            $user = User::updateOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $name,
-                    'password' => Hash::make('rt123456'), 
-                ]
-            );
+                $user = User::updateOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => $name,
+                        'password' => Hash::make('rt123456'), 
+                    ]
+                );
 
-            $person = Person::firstOrCreate(
-                ['nama_lengkap' => $name],
-                ['jenis_kelamin' => 'L', 'alamat_domisili' => "RT {$rtCode} Kandri", 'no_wa' => '08123456789']
-            );
-            
-            $person->user_id = $user->id;
-            $person->save();
+                $person = Person::firstOrCreate(
+                    ['nama_lengkap' => $name],
+                    ['jenis_kelamin' => 'L', 'alamat_domisili' => "RT {$rtCode} Kandri", 'no_wa' => '08123456789']
+                );
+                
+                $person->user_id = $user->id;
+                $person->save();
 
-            Assignment::updateOrCreate(
-                [
-                    'person_id' => $person->id,
-                    'structure_id' => $structure->id,
-                    'jabatan' => 'Koordinator RT'
-                ],
-                [
-                    'status' => 'Aktif',
-                    'tanggal_mulai' => now(),
-                    'tipe_sk' => 'SK RT'
-                ]
-            );
+                Assignment::updateOrCreate(
+                    [
+                        'person_id' => $person->id,
+                        'structure_id' => $structure->id,
+                        'jabatan' => 'Koordinator RT'
+                    ],
+                    [
+                        'status' => 'Aktif',
+                        'tanggal_mulai' => now(),
+                        'tipe_sk' => 'SK RT'
+                    ]
+                );
+                $this->command->info("✅ RT {$rtCode} created");
+            } catch (\Exception $e) {
+                $this->command->error("❌ RT $i failed: " . $e->getMessage());
+            }
         }
         $this->command->info('✅ 7 Koordinator RT created (password: rt123456)');
     }

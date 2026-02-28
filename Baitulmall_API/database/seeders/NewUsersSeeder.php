@@ -70,38 +70,42 @@ class NewUsersSeeder extends Seeder
         ];
 
         foreach ($newUsers as $u) {
-            $user = User::updateOrCreate(
-                ['email' => strtolower($u['email'])],
-                [
-                    'name' => $u['name'],
-                    'password' => $password,
-                ]
-            );
+            try {
+                $user = User::updateOrCreate(
+                    ['email' => strtolower($u['email'])],
+                    [
+                        'name' => $u['name'],
+                        'password' => $password,
+                    ]
+                );
 
-            $person = Person::updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'nama_lengkap' => $u['name'],
-                    'jenis_kelamin' => 'L',
-                    'alamat_domisili' => 'Kandri',
-                    'no_wa' => '08123456789'
-                ]
-            );
+                $person = Person::updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'nama_lengkap' => $u['name'],
+                        'jenis_kelamin' => 'L',
+                        'alamat_domisili' => 'Kandri',
+                        'no_wa' => '08123456789'
+                    ]
+                );
 
-            Assignment::updateOrCreate(
-                [
-                    'person_id' => $person->id,
-                    'structure_id' => $structure->id,
-                    'jabatan' => $u['jabatan']
-                ],
-                [
-                    'tipe_sk' => 'SK Penugasan',
-                    'tanggal_mulai' => '2023-01-01',
-                    'status' => 'Aktif'
-                ]
-            );
+                Assignment::updateOrCreate(
+                    [
+                        'person_id' => $person->id,
+                        'structure_id' => $structure->id,
+                        'jabatan' => $u['jabatan']
+                    ],
+                    [
+                        'tipe_sk' => 'SK Penugasan',
+                        'tanggal_mulai' => '2023-01-01',
+                        'status' => 'Aktif'
+                    ]
+                );
 
-            $this->command->info("✅ Created/Updated: {$u['name']} ({$u['email']}) as {$u['jabatan']}");
+                $this->command->info("✅ Created/Updated: {$u['name']} ({$u['email']}) as {$u['jabatan']}");
+            } catch (\Exception $e) {
+                $this->command->error("❌ FAILED for: {$u['name']} (" . $e->getMessage() . ")");
+            }
         }
     }
 }

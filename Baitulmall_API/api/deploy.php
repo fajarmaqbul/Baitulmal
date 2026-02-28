@@ -12,68 +12,65 @@ if (!isset($_GET['token']) || $_GET['token'] !== 'BAITULMALL_DEPLOY_2026') {
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->safeLoad();
 
+// Set execution time to 5 minutes
+set_time_limit(300);
+
 header('Content-Type: application/json');
 
 function get_pdo() {
     $dbUrl = $_ENV['DATABASE_URL'] ?? getenv('DATABASE_URL') ?? '';
     
     if ($dbUrl && (str_starts_with($dbUrl, 'postgres://') || str_starts_with($dbUrl, 'postgresql://'))) {
-        // Parse DATABASE_URL: postgres://user:pass@host:port/dbname
         $parsedUrl = parse_url($dbUrl);
-        $host = $parsedUrl['host'];
-        $port = $parsedUrl['port'] ?? '5432';
-        $user = $parsedUrl['user'];
-        $pass = $parsedUrl['pass'];
-        $dbname = ltrim($parsedUrl['path'], '/');
-        
-        $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-        return new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $dsn = "pgsql:host=" . $parsedUrl['host'] . ";port=" . ($parsedUrl['port'] ?? '5432') . ";dbname=" . ltrim($parsedUrl['path'], '/');
+        return new PDO($dsn, $parsedUrl['user'], $parsedUrl['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
-
-    $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
-    $port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? '5432';
-    $dbname = $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?? $_ENV['SUPABASE_DB_DATABASE'] ?? 'postgres';
-    $user = $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?? 'postgres';
-    $pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '';
-    
-    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
-    return new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    return null;
 }
 
 $step = $_GET['step'] ?? 'status';
 
 try {
-    $pdo = get_pdo();
-
     if ($step === 'status') {
-        $users  = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-        $asnaf  = $pdo->query("SELECT COUNT(*) FROM asnaf")->fetchColumn();
-        $muzaki = $pdo->query("SELECT COUNT(*) FROM muzaki")->fetchColumn();
-        echo json_encode(['status' => 'ok', 'users' => (int)$users, 'asnaf' => (int)$asnaf, 'muzaki' => (int)$muzaki]);
+        $pdo = get_pdo();
+        if (!$pdo) throw new Exception("Database URL not found");
+        
+        $counts = [
+            'users' => $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn(),
+            'asnaf' => $pdo->query("SELECT COUNT(*) FROM asnaf")->fetchColumn(),
+            'structures' => $pdo->query("SELECT COUNT(*) FROM organization_structures")->fetchColumn(),
+            'rules' => $pdo->query("SELECT COUNT(*) FROM signature_rules")->fetchColumn(),
+        ];
+        echo json_encode(['status' => 'ok', 'counts' => $counts]);
+
+    } elseif ($step === 'migrate-fresh') {
+        $app = require_once __DIR__ . '/../bootstrap/app.php';
+        $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+        $kernel->bootstrap();
+        
+        \Illuminate\Support\Facades\Artisan::call('db:wipe', ['--force' => true]);
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        
+        echo json_encode(['status' => 'success', 'output' => \Illuminate\Support\Facades\Artisan::output()]);
 
     } elseif ($step === 'seed-direct') {
-        // Bootstrap Laravel properly for Artisan
         $app = require_once __DIR__ . '/../bootstrap/app.php';
         $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
         $kernel->bootstrap();
 
         $results = [];
+        
+        // Use a single seeder that handles all dependencies cleanly
+        $seeders = [
+            'RTSeeder',
+            'AsnafSeeder', // Cleanly deletes its own data
+            'SDMSeeder',
+            'SignatureSeeder',
+            'SettingSeeder',
+            'UserAccountSeeder',
+            'NewUsersSeeder'
+        ];
 
-        // Admin users via PDO to ensure it works even if models are broken
-        $now = date('Y-m-d H:i:s');
-        $token = bin2hex(random_bytes(20));
-        $adminPwd = password_hash('password123', PASSWORD_BCRYPT);
-        $fajarPwd = password_hash('Kandri2026!', PASSWORD_BCRYPT);
-
-        $pdo->exec("INSERT INTO users (name, email, password, remember_token, created_at, updated_at) 
-            VALUES ('Admin Baitulmall', 'admin@baitulmall.com', '$adminPwd', '$token', '$now', '$now') 
-            ON CONFLICT (email) DO NOTHING");
-        $pdo->exec("INSERT INTO users (name, email, password, remember_token, created_at, updated_at) 
-            VALUES ('Fajar Maqbul', 'fajarmaqbulkandri@gmail.com', '$fajarPwd', '$token', '$now', '$now') 
-            ON CONFLICT (email) DO NOTHING");
-        $results[] = 'Admin users: OK';
-
-        $seeders = ['RTSeeder', 'AsnafSeeder', 'SDMSeeder', 'SignatureSeeder', 'ZakatFitrahSeeder', 'SettingSeeder', 'TransactionalDataSeeder', 'UserAccountSeeder', 'NewUsersSeeder'];
         foreach ($seeders as $seeder) {
             try {
                 \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => $seeder, '--force' => true]);
@@ -83,26 +80,13 @@ try {
             }
         }
 
-        echo json_encode($results);
-        exit;
-    } elseif ($step === 'migrate-fresh') {
-        $app = require_once __DIR__ . '/../bootstrap/app.php';
-        $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-        $kernel->bootstrap();
-        
-        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
-        \Illuminate\Support\Facades\Artisan::call('db:wipe', ['--force' => true]);
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
-        
-        echo json_encode(['status' => 'success', 'output' => \Illuminate\Support\Facades\Artisan::output()]);
+        echo json_encode(['status' => 'success', 'results' => $results]);
     }
 
 } catch (\Throwable $e) {
     echo json_encode([
         'status'  => 'error',
         'message' => $e->getMessage(),
-        'file'    => basename($e->getFile()),
         'line'    => $e->getLine()
     ]);
 }
