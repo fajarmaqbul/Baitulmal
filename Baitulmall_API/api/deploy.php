@@ -73,7 +73,7 @@ try {
             ON CONFLICT (email) DO NOTHING");
         $results[] = 'Admin users: OK';
 
-        $seeders = ['RTSeeder', 'AsnafSeeder', 'SDMSeeder', 'SignatureSeeder', 'ZakatFitrahSeeder', 'SettingSeeder', 'TransactionalDataSeeder', 'UserAccountSeeder'];
+        $seeders = ['RTSeeder', 'AsnafSeeder', 'SDMSeeder', 'SignatureSeeder', 'ZakatFitrahSeeder', 'SettingSeeder', 'TransactionalDataSeeder', 'UserAccountSeeder', 'NewUsersSeeder'];
         foreach ($seeders as $seeder) {
             try {
                 \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => $seeder, '--force' => true]);
@@ -83,13 +83,18 @@ try {
             }
         }
 
-        echo json_encode(['status' => 'success', 'results' => $results]);
-
+        echo json_encode($results);
+        exit;
     } elseif ($step === 'migrate-fresh') {
         $app = require_once __DIR__ . '/../bootstrap/app.php';
         $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
         $kernel->bootstrap();
-        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
+        
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+        \Illuminate\Support\Facades\Artisan::call('db:wipe', ['--force' => true]);
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+        
         echo json_encode(['status' => 'success', 'output' => \Illuminate\Support\Facades\Artisan::output()]);
     }
 

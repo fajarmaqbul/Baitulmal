@@ -19,7 +19,7 @@ class SDMSeeder extends Seeder
                 'tipe' => 'Struktural',
                 'tanggal_mulai' => '2023-01-01',
                 'tanggal_selesai' => '2028-12-31',
-                'is_active' => true
+                'is_active' => 1
             ]
         );
 
@@ -29,7 +29,7 @@ class SDMSeeder extends Seeder
                 'nama_struktur' => 'Pengurus Takmir Masjid',
                 'tipe' => 'Struktural',
                 'tanggal_mulai' => '2023-01-01',
-                'is_active' => true
+                'is_active' => 1
             ]
         );
 
@@ -39,7 +39,7 @@ class SDMSeeder extends Seeder
                 'nama_struktur' => 'Pengurus RW 01',
                 'tipe' => 'Struktural',
                 'tanggal_mulai' => '2023-01-01',
-                'is_active' => true
+                'is_active' => 1
             ]
         );
 
@@ -49,7 +49,7 @@ class SDMSeeder extends Seeder
                 'nama_struktur' => 'Pengurus RT 01',
                 'tipe' => 'Struktural',
                 'tanggal_mulai' => '2023-01-01',
-                'is_active' => true
+                'is_active' => 1
             ]
         );
 

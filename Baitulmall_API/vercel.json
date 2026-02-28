@@ -7,9 +7,6 @@
         "api/health.php": {
             "runtime": "vercel-php@0.7.1"
         },
-        "api/test.php": {
-            "runtime": "vercel-php@0.7.1"
-        },
         "api/deploy.php": {
             "runtime": "vercel-php@0.7.1"
         }
@@ -18,10 +15,6 @@
         {
             "src": "/deploy-native",
             "dest": "api/deploy.php"
-        },
-        {
-            "src": "/test-php",
-            "dest": "api/test.php"
         },
         {
             "src": "/health",

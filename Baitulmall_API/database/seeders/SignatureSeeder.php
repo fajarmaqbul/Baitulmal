@@ -21,19 +21,19 @@ class SignatureSeeder extends Seeder
         $ketua = Signer::create([
             'nama_pejabat' => 'H. Sulaiman',
             'jabatan' => 'Ketua Umum Baitulmall',
-            'is_active' => true
+            'is_active' => 1
         ]);
 
         $bendahara = Signer::create([
             'nama_pejabat' => 'Ahmad Bendahara',
             'jabatan' => 'Bendahara Baitulmall',
-            'is_active' => true
+            'is_active' => 1
         ]);
 
         $ketuaTakmir = Signer::create([
             'nama_pejabat' => 'Drs. KH. Ahmad',
             'jabatan' => 'Ketua Takmir Masjid',
-            'is_active' => true
+            'is_active' => 1
         ]);
 
         // 3. Create Default Rules for various pages
