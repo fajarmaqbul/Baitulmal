@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('person_id')->constrained('people')->onDelete('restrict');
             $table->foreignId('structure_id')->constrained('organization_structures')->onDelete('restrict');
             $table->string('jabatan'); // Ketua, Sekretaris, Amil
-            $table->enum('tipe_sk', ['SK Resmi', 'Penunjukan Langsung', 'Relawan'])->default('SK Resmi');
+            $table->string('tipe_sk')->default('SK Resmi');
             $table->string('no_sk')->nullable();
             $table->date('tanggal_mulai');
             $table->date('tanggal_selesai')->nullable();

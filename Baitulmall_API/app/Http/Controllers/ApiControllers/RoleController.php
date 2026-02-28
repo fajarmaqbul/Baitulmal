@@ -97,7 +97,9 @@ class RoleController extends Controller
         $allowedEmails = [
             'admin@baitulmall.com', 
             'admin@baitulmal.com',
-            'fajarmaqbulkandri@gmail.com'
+            'fajarmaqbulkandri@gmail.com',
+            'masyazid@baitulmall.com',
+            'fani@baitulmall.com'
         ];
         
         $userEmail = $user ? strtolower(trim($user->email)) : '';

@@ -60,13 +60,16 @@ try {
 
         $results = [];
         
-        // Use a single seeder that handles all dependencies cleanly
+        // Comprehensive list from DatabaseSeeder.php plus new ones
         $seeders = [
             'RTSeeder',
-            'AsnafSeeder', // Cleanly deletes its own data
+            'AsnafSeeder',
             'SDMSeeder',
             'SignatureSeeder',
+            'ZakatFitrahSeeder',
             'SettingSeeder',
+            'RequestedUsersSeeder',
+            'TransactionalDataSeeder',
             'UserAccountSeeder',
             'NewUsersSeeder'
         ];
@@ -77,14 +80,14 @@ try {
                 $results[] = [
                     'seeder' => $seeder,
                     'status' => 'OK',
-                    'output' => \Illuminate\Support\Facades\Artisan::output()
+                    'output' => trim(\Illuminate\Support\Facades\Artisan::output())
                 ];
             } catch (\Throwable $e) {
                 $results[] = [
                     'seeder' => $seeder,
                     'status' => 'ERROR',
                     'message' => $e->getMessage(),
-                    'output' => \Illuminate\Support\Facades\Artisan::output()
+                    'output' => trim(\Illuminate\Support\Facades\Artisan::output())
                 ];
             }
         }
