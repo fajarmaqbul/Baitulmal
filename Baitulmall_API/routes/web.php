@@ -14,12 +14,12 @@ Route::get('/', function () {
 Route::get('urgent-sync', function() {
     if (request('token') !== 'BAITULMALL_DEPLOY_2026') return response('Unauthorized', 401);
     try {
-        echo "LOG: Resyncing Database...\n";
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        echo "LOG: Performing Fresh Sync (DROP and ALL MIGRATIONS)...\n";
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
         echo \Illuminate\Support\Facades\Artisan::output() . "\n";
         \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
         echo \Illuminate\Support\Facades\Artisan::output() . "\n";
-        return "SUCCESS: Database production sinkron dengan localhost.";
+        return "SUCCESS: Database production 100% Sinkron degan Local.";
     } catch (\Exception $e) {
         return "ERROR: " . $e->getMessage();
     }
