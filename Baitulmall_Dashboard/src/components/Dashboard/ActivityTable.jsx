@@ -21,7 +21,7 @@ const ActivityTable = ({ muzaki, sedekah }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {muzaki.slice(0, 5).map((m, index) => (
+                        {muzaki.slice(0, 10).map((m, index) => (
                             <tr key={m.id}>
                                 <td>{index + 1}</td>
                                 <td>
@@ -41,7 +41,7 @@ const ActivityTable = ({ muzaki, sedekah }) => {
                                 </td>
                             </tr>
                         ))}
-                        {sedekah.slice(0, 5).map((s, index) => (
+                        {sedekah.slice(0, 10).map((s, index) => (
                             <tr key={s.id}>
                                 <td>{muzaki.length + index + 1}</td>
                                 <td>
