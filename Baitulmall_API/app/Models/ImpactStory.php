@@ -15,4 +15,8 @@ class ImpactStory extends Model
         'image_path',
         'is_published',
     ];
+
+    protected $casts = [
+        'is_published' => 'boolean',
+    ];
 }

@@ -32,7 +32,7 @@ class PublicController extends Controller
             try {
                 $zakatFitrah = \App\Models\Muzaki::where('tahun', $currentYear)
                     ->select(
-                        DB::raw('SUM(CAST(jumlah_beras_kg AS DECIMAL)) as total_beras'),
+                        DB::raw('SUM(CAST(jumlah_beras_kg AS NUMERIC)) as total_beras'),
                         DB::raw('SUM(jumlah_jiwa) as total_jiwa'),
                         DB::raw('COUNT(id) as total_muzaki')
                     )->first();
@@ -133,6 +133,7 @@ class PublicController extends Controller
      */
     public function stories()
     {
+        // Using explicit boolean check for Postgres compatibility
         $stories = ImpactStory::where('is_published', true)
             ->orderBy('created_at', 'desc')
             ->get();
