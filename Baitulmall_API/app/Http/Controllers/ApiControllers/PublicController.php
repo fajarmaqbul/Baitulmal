@@ -133,10 +133,17 @@ class PublicController extends Controller
      */
     public function stories()
     {
-        // Using explicit boolean check for Postgres compatibility
-        $stories = ImpactStory::where('is_published', true)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // Database-agnostic boolean check for SQLite (1/0) vs Postgres (true/false)
+        $isPostgres = DB::getDriverName() === 'pgsql';
+        $query = ImpactStory::query();
+        
+        if ($isPostgres) {
+            $query->whereRaw('is_published = true');
+        } else {
+            $query->where('is_published', 1);
+        }
+
+        $stories = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'success' => true,
