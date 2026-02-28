@@ -22,7 +22,7 @@ import {
 import SignatureManager from '../components/SignatureManager';
 
 import { fetchSettings, createSetting, updateSetting, deleteSetting } from '../services/settingApi';
-import { fetchUsers, updateUserRole, updateUser } from '../services/userApi';
+import { fetchUsers, updateUserRole, updateUser, deleteUser } from '../services/userApi';
 import { fetchRoles, createRole, updateRole, deleteRole } from '../services/roleApi';
 import SettingFormModal from '../components/Modals/SettingFormModal';
 import UserManagementModal from '../components/Modals/UserManagementModal';
@@ -178,6 +178,22 @@ const SettingPage = () => {
         } catch (err) {
             console.error('Update user failed:', err);
             alert('Gagal update user: ' + (err.message || 'Error'));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDeleteUser = async (user) => {
+        if (!window.confirm(`Hapus user ${user.name}? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+        setSubmitting(true);
+        try {
+            await deleteUser(user.id);
+            await loadUsers();
+            alert('User berhasil dihapus.');
+        } catch (err) {
+            console.error('Delete user failed:', err);
+            alert('Gagal menghapus user: ' + (err.message || 'Error'));
         } finally {
             setSubmitting(false);
         }
@@ -582,14 +598,25 @@ const SettingPage = () => {
                                                                 ))}
                                                             </td>
                                                             <td className="py-4 px-4 align-middle text-center">
-                                                                <button
-                                                                    className="p-2 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                                                                    style={{ color: 'var(--text-muted)' }}
-                                                                    onClick={() => setUserModal({ open: true, data: u })}
-                                                                    title="Edit User"
-                                                                >
-                                                                    <Edit2 size={16} />
-                                                                </button>
+                                                                <div className="flex justify-center gap-2">
+                                                                    <button
+                                                                        className="p-2 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                                        style={{ color: 'var(--text-muted)' }}
+                                                                        onClick={() => setUserModal({ open: true, data: u })}
+                                                                        title="Edit User"
+                                                                    >
+                                                                        <Edit2 size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        className="p-2 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                                        style={{ color: 'var(--text-muted)' }}
+                                                                        onClick={() => handleDeleteUser(u)}
+                                                                        title="Hapus User"
+                                                                        disabled={submitting}
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))
