@@ -1,5 +1,5 @@
 <?php
-// Native Vercel bridge - Direct PDO, no Laravel facade needed
+// Native Vercel bridge - v2.1 (Direct PDO + Laravel bootstrap)
 require __DIR__ . '/../vendor/autoload.php';
 
 if (!isset($_GET['token']) || $_GET['token'] !== 'BAITULMALL_DEPLOY_2026') {
