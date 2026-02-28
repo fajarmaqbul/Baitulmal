@@ -17,11 +17,15 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Admin Baitulmall',
-            'email' => 'admin@baitulmall.com',
-            'password' => bcrypt('password'),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@baitulmall.com'],
+            [
+                'name' => 'Admin Baitulmall',
+                'email' => 'admin@baitulmall.com',
+                'password' => bcrypt('password'),
+                'remember_token' => \Illuminate\Support\Str::random(10),
+            ]
+        );
 
         $this->call([
             RTSeeder::class,
