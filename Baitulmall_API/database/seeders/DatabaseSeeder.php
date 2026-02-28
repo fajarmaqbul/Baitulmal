@@ -34,10 +34,10 @@ class DatabaseSeeder extends Seeder
             SignatureSeeder::class,
             ZakatFitrahSeeder::class,
             SettingSeeder::class,
-            RequestedUsersSeeder::class,
+            // RequestedUsersSeeder::class, // Disabled to prevent restore of deleted users
             TransactionalDataSeeder::class,
-            UserAccountSeeder::class,
-            NewUsersSeeder::class,
+            // UserAccountSeeder::class, // Disabled to prevent restore of deleted users
+            // NewUsersSeeder::class, // Disabled to prevent restore of deleted users
         ]);
     }
 }

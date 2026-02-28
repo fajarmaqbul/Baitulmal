@@ -68,10 +68,10 @@ try {
             'SignatureSeeder',
             'ZakatFitrahSeeder',
             'SettingSeeder',
-            'RequestedUsersSeeder',
+            // 'RequestedUsersSeeder', // Disabled to prevent restore of deleted users
             'TransactionalDataSeeder',
-            'UserAccountSeeder',
-            'NewUsersSeeder'
+            // 'UserAccountSeeder', // Disabled to prevent restore of deleted users
+            // 'NewUsersSeeder' // Disabled to prevent restore of deleted users
         ];
 
         foreach ($seeders as $seeder) {
