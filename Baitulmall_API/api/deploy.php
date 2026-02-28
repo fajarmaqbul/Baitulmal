@@ -1,5 +1,5 @@
 <?php
-// Native Vercel bridge - runs BEFORE Laravel routing
+// Native Vercel bridge - Direct PDO, no Laravel facade needed
 require __DIR__ . '/../vendor/autoload.php';
 
 if (!isset($_GET['token']) || $_GET['token'] !== 'BAITULMALL_DEPLOY_2026') {
@@ -8,57 +8,64 @@ if (!isset($_GET['token']) || $_GET['token'] !== 'BAITULMALL_DEPLOY_2026') {
     exit;
 }
 
-$app = require_once __DIR__ . '/../bootstrap/app.php';
-
-// Boot via Console Kernel (not HTTP) so facades work
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+// Load .env manually
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+$dotenv->safeLoad();
 
 $step = $_GET['step'] ?? 'status';
 
 header('Content-Type: application/json');
 
+// Build DSN from environment
+$dbUrl = $_ENV['DATABASE_URL'] ?? getenv('DATABASE_URL') ?? '';
+$host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
+$port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? '5432';
+$dbname = $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?? $_ENV['SUPABASE_DB_DATABASE'] ?? getenv('SUPABASE_DB_DATABASE') ?? 'postgres';
+$user = $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?? 'postgres';
+$pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '';
+
 try {
-    if ($step === 'seed-direct') {
+    // Try DATABASE_URL first (Supabase format)
+    if ($dbUrl) {
+        $pdo = new PDO($dbUrl, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    } else {
+        $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+        $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    }
+
+    if ($step === 'status') {
+        $users  = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+        $asnaf  = $pdo->query("SELECT COUNT(*) FROM asnaf")->fetchColumn();
+        $muzaki = $pdo->query("SELECT COUNT(*) FROM muzaki")->fetchColumn();
+        echo json_encode(['status' => 'ok', 'users' => (int)$users, 'asnaf' => (int)$asnaf, 'muzaki' => (int)$muzaki]);
+
+    } elseif ($step === 'seed-direct') {
+        // Bootstrap Laravel properly for Artisan
+        $app = require_once __DIR__ . '/../bootstrap/app.php';
+        $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+        $kernel->bootstrap();
+
         $results = [];
 
-        // Create admin users directly (no factory/fake())
-        \App\Models\User::firstOrCreate(
-            ['email' => 'admin@baitulmall.com'],
-            [
-                'name' => 'Admin Baitulmall',
-                'password' => \Illuminate\Support\Facades\Hash::make('password123'),
-                'remember_token' => \Illuminate\Support\Str::random(10)
-            ]
-        );
-        \App\Models\User::firstOrCreate(
-            ['email' => 'fajarmaqbulkandri@gmail.com'],
-            [
-                'name' => 'Fajar Maqbul',
-                'password' => \Illuminate\Support\Facades\Hash::make('Kandri2026!'),
-                'remember_token' => \Illuminate\Support\Str::random(10)
-            ]
-        );
+        // Create admin users directly
+        $now = date('Y-m-d H:i:s');
+        $token = bin2hex(random_bytes(20));
+        $adminPwd = password_hash('password123', PASSWORD_BCRYPT);
+        $fajarPwd = password_hash('Kandri2026!', PASSWORD_BCRYPT);
+
+        $pdo->exec("INSERT INTO users (name, email, password, remember_token, created_at, updated_at)
+            VALUES ('Admin Baitulmall', 'admin@baitulmall.com', '$adminPwd', '$token', '$now', '$now')
+            ON CONFLICT (email) DO NOTHING");
+        $pdo->exec("INSERT INTO users (name, email, password, remember_token, created_at, updated_at)
+            VALUES ('Fajar Maqbul', 'fajarmaqbulkandri@gmail.com', '$fajarPwd', '$token', '$now', '$now')
+            ON CONFLICT (email) DO NOTHING");
         $results[] = 'Admin users: OK';
 
-        // Run seeders one by one (no DatabaseSeeder to avoid UserFactory)
-        $seeders = [
-            'RTSeeder',
-            'AsnafSeeder',
-            'SDMSeeder',
-            'SignatureSeeder',
-            'ZakatFitrahSeeder',
-            'SettingSeeder',
-            'TransactionalDataSeeder',
-            'UserAccountSeeder'
-        ];
-
+        // Run seeders via Artisan
+        $seeders = ['RTSeeder', 'AsnafSeeder', 'SDMSeeder', 'SignatureSeeder', 'ZakatFitrahSeeder', 'SettingSeeder', 'TransactionalDataSeeder', 'UserAccountSeeder'];
         foreach ($seeders as $seeder) {
             try {
-                \Illuminate\Support\Facades\Artisan::call('db:seed', [
-                    '--class' => $seeder,
-                    '--force' => true
-                ]);
+                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => $seeder, '--force' => true]);
                 $out = trim(\Illuminate\Support\Facades\Artisan::output());
                 $results[] = "$seeder: OK" . ($out ? " | $out" : '');
             } catch (\Throwable $e) {
@@ -67,30 +74,6 @@ try {
         }
 
         echo json_encode(['status' => 'success', 'step' => 'seed-direct', 'results' => $results]);
-
-    } elseif ($step === 'migrate') {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        echo json_encode([
-            'status' => 'success',
-            'step' => 'migrate',
-            'output' => \Illuminate\Support\Facades\Artisan::output()
-        ]);
-
-    } elseif ($step === 'migrate-fresh') {
-        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
-        echo json_encode([
-            'status' => 'success',
-            'step' => 'migrate-fresh',
-            'output' => \Illuminate\Support\Facades\Artisan::output()
-        ]);
-
-    } elseif ($step === 'status') {
-        echo json_encode([
-            'status' => 'ok',
-            'users'  => \App\Models\User::count(),
-            'asnaf'  => \App\Models\Asnaf::count(),
-            'muzaki' => \App\Models\Muzaki::count(),
-        ]);
 
     } else {
         echo json_encode(['status' => 'error', 'message' => "Unknown step: $step"]);
@@ -102,5 +85,10 @@ try {
         'message' => $e->getMessage(),
         'file'    => basename($e->getFile()),
         'line'    => $e->getLine(),
+        'env_check' => [
+            'has_db_url' => !empty($dbUrl),
+            'host' => $host,
+            'dbname' => $dbname,
+        ]
     ]);
 }
