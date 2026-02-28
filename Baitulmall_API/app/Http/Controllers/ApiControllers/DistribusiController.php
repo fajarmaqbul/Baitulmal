@@ -96,4 +96,20 @@ class DistribusiController extends Controller
         $distribusi->delete();
         return response()->json(['success' => true, 'message' => 'Deleted']);
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids');
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'No IDs provided'], 400);
+        }
+
+        try {
+            Distribusi::whereIn('id', $ids)->delete();
+            return response()->json(['success' => true, 'message' => count($ids) . ' records deleted']);
+        } catch (\Exception $e) {
+            Log::error('Distribusi Bulk Delete Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete records'], 500);
+        }
+    }
 }

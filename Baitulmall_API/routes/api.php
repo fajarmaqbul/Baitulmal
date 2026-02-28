@@ -85,6 +85,7 @@ Route::prefix('v1')->group(function () {
         // ========== Distribusi (Distribution) ==========
         Route::post('distribusi', [DistribusiController::class, 'store']);
         Route::put('distribusi/{id}', [DistribusiController::class, 'update']);
+        Route::delete('distribusi', [DistribusiController::class, 'bulkDelete']);
         Route::delete('distribusi/{id}', [DistribusiController::class, 'destroy']);
         Route::post('distribusi/{id}/mark-distributed', [DistribusiController::class, 'markAsDistributed']);
         Route::post('distribusi/{id}/mark-verified', [DistribusiController::class, 'markAsVerified']);
