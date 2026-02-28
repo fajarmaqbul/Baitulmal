@@ -25,7 +25,7 @@ class PublicController extends Controller
      */
     public function statistics()
     {
-        return Cache::remember('public_stats_aggregation', 180, function () {
+        return Cache::remember('public_stats_aggregation_v2', 300, function () {
             $currentYear = date('Y');
 
             // 1. Zakat Fitrah Aggregation (Optimized)
@@ -133,17 +133,11 @@ class PublicController extends Controller
      */
     public function stories()
     {
-        // Database-agnostic boolean check for SQLite (1/0) vs Postgres (true/false)
-        $isPostgres = DB::getDriverName() === 'pgsql';
-        $query = ImpactStory::query();
-        
-        if ($isPostgres) {
-            $query->whereRaw('is_published = true');
-        } else {
-            $query->where('is_published', 1);
-        }
-
-        $stories = $query->orderBy('created_at', 'desc')->get();
+        // Absolute database-agnostic filtering to avoid SQL type mismatch
+        $stories = \App\Models\ImpactStory::all()
+            ->filter(fn($s) => (bool)$s->is_published)
+            ->sortByDesc('created_at')
+            ->values();
 
         return response()->json([
             'success' => true,
