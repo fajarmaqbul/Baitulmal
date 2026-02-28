@@ -111,4 +111,34 @@ class UserController extends Controller
             ], 500);
         }
     }
+    /**
+     * Remove the specified user from storage.
+     */
+    public function destroy($id)
+    {
+        try {
+            $user = User::with('person')->findOrFail($id);
+
+            DB::transaction(function() use ($user) {
+                if ($user->person) {
+                    // Manual delete linked assignments if not on cascade delete
+                    if (method_exists($user->person, 'assignments')) {
+                        $user->person->assignments()->delete();
+                    }
+                    $user->person->delete();
+                }
+                $user->delete();
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Akun pengguna dan data terkait berhasil diapus permanen.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus user: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

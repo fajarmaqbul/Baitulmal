@@ -32,7 +32,7 @@ Route::get('final-deploy', function() {
     if (request('token') !== 'BAITULMALL_DEPLOY_2026') return response('Unauthorized', 401);
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        // \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]); // Disabled to prevent restore of deleted data
         return response()->json(['status' => 'success', 'output' => \Illuminate\Support\Facades\Artisan::output()]);
     } catch (\Exception $e) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
