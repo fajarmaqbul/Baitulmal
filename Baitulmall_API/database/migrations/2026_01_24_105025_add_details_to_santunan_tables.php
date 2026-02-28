@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('santunan', function (Blueprint $table) {
             $table->foreignId('activity_id')->nullable()->after('id')->constrained('santunan_activities')->onDelete('set null');
-            $table->enum('kategori', ['yatim', 'dhuafa'])->default('yatim')->after('besaran')->comment('Beneficiary category');
+            $table->enum('kategori', ['yatim', 'dhuafa', 'kematian'])->default('yatim')->after('besaran')->comment('Beneficiary category');
         });
 
         Schema::table('santunan_donations', function (Blueprint $table) {
