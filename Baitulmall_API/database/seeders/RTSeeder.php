@@ -65,7 +65,7 @@ class RTSeeder extends Seeder
         ];
 
         foreach ($rts as $rt) {
-            RT::create($rt);
+            RT::updateOrCreate(['kode' => $rt['kode']], $rt);
         }
 
         $this->command->info('✅ Successfully seeded 7 RTs for Desa Kandri, RW 01');

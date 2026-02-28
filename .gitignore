@@ -8,3 +8,5 @@ build/
 tmp/
 .DS_Store
 storage/*.key
+.vercel
+.env*.local

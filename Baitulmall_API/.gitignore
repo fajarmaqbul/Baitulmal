@@ -27,3 +27,6 @@ Thumbs.db
 .vercel
 .env*.local
 .env.local.disabled
+
+.vercel
+.env*.local
