@@ -13,14 +13,19 @@ Route::get('/', function () {
 // Urgent Sync Bridge in Web Routes
 Route::get('urgent-sync', function() {
     if (request('token') !== 'BAITULMALL_DEPLOY_2026') return response('Unauthorized', 401);
+    $step = request('step', 'migrate');
     try {
-        echo "LOG: Performing Fresh Sync (DROP and ALL MIGRATIONS)...\n";
-        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
-        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
-        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-        echo \Illuminate\Support\Facades\Artisan::output() . "\n";
-        return "SUCCESS: Database production 100% Sinkron degan Local.";
+        if ($step === 'migrate') {
+            echo "Step: Migrate Fresh...\n";
+            \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
+            return "SUCCESS: Migration Complete. \n" . \Illuminate\Support\Facades\Artisan::output();
+        } elseif ($step === 'seed') {
+            echo "Step: Seeding...\n";
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            return "SUCCESS: Seeding Complete. \n" . \Illuminate\Support\Facades\Artisan::output();
+        }
+        return "ERROR: Step not recognized.";
     } catch (\Exception $e) {
-        return "ERROR: " . $e->getMessage();
+        return "ERROR in $step: " . $e->getMessage();
     }
 });
