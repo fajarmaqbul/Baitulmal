@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return response()->json([
         'status' => 'Baitulmall API is online',
-        'version' => '1.1.0',
+        'version' => '1.2.0',
         'docs' => '/api/v1/test'
     ]);
 });
