@@ -40,7 +40,7 @@ class NewUsersSeeder extends Seeder
             [
                 'nama_struktur' => 'Pengurus Baitulmall', 
                 'tipe' => 'Struktural', 
-                'is_active' => 1
+                'tanggal_mulai' => '2023-01-01'
             ]
         );
 
@@ -95,9 +95,9 @@ class NewUsersSeeder extends Seeder
                     'jabatan' => $u['jabatan']
                 ],
                 [
-                    'status' => 'Aktif',
-                    'tanggal_mulai' => now(),
-                    'tipe_sk' => 'SK Penugasan'
+                    'tipe_sk' => 'SK Penugasan',
+                    'tanggal_mulai' => '2023-01-01',
+                    'status' => 'Aktif'
                 ]
             );
 

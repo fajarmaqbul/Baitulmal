@@ -11,45 +11,41 @@ class SDMSeeder extends Seeder
 {
     public function run()
     {
-        // 1. Create Structures
-        $baitulmall = OrganizationStructure::firstOrCreate(
+        // 1. Create Structures - Removing is_active to see if it fixes PostgreSQL type mismatch
+        $baitulmall = OrganizationStructure::updateOrCreate(
             ['kode_struktur' => 'BAITULMALL_2023'],
             [
                 'nama_struktur' => 'Pengurus Baitulmall',
                 'tipe' => 'Struktural',
                 'tanggal_mulai' => '2023-01-01',
-                'tanggal_selesai' => '2028-12-31',
-                'is_active' => 1
+                'tanggal_selesai' => '2028-12-31'
             ]
         );
 
-        $takmir = OrganizationStructure::firstOrCreate(
+        $takmir = OrganizationStructure::updateOrCreate(
             ['kode_struktur' => 'TAKMIR_2023'],
             [
                 'nama_struktur' => 'Pengurus Takmir Masjid',
                 'tipe' => 'Struktural',
-                'tanggal_mulai' => '2023-01-01',
-                'is_active' => 1
+                'tanggal_mulai' => '2023-01-01'
             ]
         );
 
-        $rw = OrganizationStructure::firstOrCreate(
+        $rw = OrganizationStructure::updateOrCreate(
             ['kode_struktur' => 'RW_01_2023'],
             [
                 'nama_struktur' => 'Pengurus RW 01',
                 'tipe' => 'Struktural',
-                'tanggal_mulai' => '2023-01-01',
-                'is_active' => 1
+                'tanggal_mulai' => '2023-01-01'
             ]
         );
 
-        $rt = OrganizationStructure::firstOrCreate(
+        $rt = OrganizationStructure::updateOrCreate(
             ['kode_struktur' => 'RT_01_2023'],
             [
                 'nama_struktur' => 'Pengurus RT 01',
                 'tipe' => 'Struktural',
-                'tanggal_mulai' => '2023-01-01',
-                'is_active' => 1
+                'tanggal_mulai' => '2023-01-01'
             ]
         );
 
@@ -90,7 +86,7 @@ class SDMSeeder extends Seeder
         ];
 
         foreach ($members as $m) {
-            $person = Person::firstOrCreate(
+            $person = Person::updateOrCreate(
                 ['nama_lengkap' => $m['nama']],
                 [
                     'no_wa' => $m['no_wa'],

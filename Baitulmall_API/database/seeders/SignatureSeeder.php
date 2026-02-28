@@ -14,26 +14,23 @@ class SignatureSeeder extends Seeder
     public function run(): void
     {
         // 1. Clear existing data
-        SignatureRule::truncate();
-        Signer::truncate();
+        SignatureRule::query()->delete();
+        Signer::query()->delete();
 
         // 2. Create Master Signers
         $ketua = Signer::create([
             'nama_pejabat' => 'H. Sulaiman',
-            'jabatan' => 'Ketua Umum Baitulmall',
-            'is_active' => 1
+            'jabatan' => 'Ketua Umum Baitulmall'
         ]);
 
         $bendahara = Signer::create([
             'nama_pejabat' => 'Ahmad Bendahara',
-            'jabatan' => 'Bendahara Baitulmall',
-            'is_active' => 1
+            'jabatan' => 'Bendahara Baitulmall'
         ]);
 
         $ketuaTakmir = Signer::create([
             'nama_pejabat' => 'Drs. KH. Ahmad',
-            'jabatan' => 'Ketua Takmir Masjid',
-            'is_active' => 1
+            'jabatan' => 'Ketua Takmir Masjid'
         ]);
 
         // 3. Create Default Rules for various pages
