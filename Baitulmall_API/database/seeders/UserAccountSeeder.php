@@ -37,7 +37,7 @@ class UserAccountSeeder extends Seeder
         // Ensure Structures Exist (from SDMSeeder logic)
         $baitulmall = OrganizationStructure::firstOrCreate(
             ['kode_struktur' => 'BAITULMALL_2023'],
-            ['nama_struktur' => 'Pengurus Baitulmall', 'tipe' => 'Struktural', 'is_active' => true]
+            ['nama_struktur' => 'Pengurus Baitulmall', 'tipe' => 'Struktural']
         );
 
         /* 2. Bendahara (3 Orang) - Disabled by request
@@ -95,8 +95,7 @@ class UserAccountSeeder extends Seeder
                     ['kode_struktur' => $kodeStruktur],
                     [
                         'nama_struktur' => "Pengurus RT {$rtCode}",
-                        'tipe' => 'Struktural',
-                        'is_active' => true
+                        'tipe' => 'Struktural'
                     ]
                 );
 
