@@ -100,6 +100,7 @@ class AsnafController extends Controller
         $asnaf->scoring_details = $scoreResult['details'];
 
         $asnaf->save();
+        $this->statisticsService->clearCache($asnaf->tahun);
 
         return response()->json([
             'message' => 'Asnaf created successfully',
@@ -161,6 +162,7 @@ class AsnafController extends Controller
         }
 
         $asnaf->save();
+        $this->statisticsService->clearCache($asnaf->tahun);
 
         return response()->json([
             'message' => 'Asnaf updated successfully',
@@ -178,6 +180,7 @@ class AsnafController extends Controller
     {
         $asnaf = Asnaf::findOrFail($id);
         $asnaf->delete();
+        $this->statisticsService->clearCache($asnaf->tahun);
 
         return response()->json([
             'message' => 'Asnaf deleted successfully',

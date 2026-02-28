@@ -101,6 +101,8 @@ class SedekahController extends Controller
             $this->whatsAppService->send($sedekah->no_hp_donatur, $message);
         }
 
+        $this->clearSedekahCache();
+
         return response()->json([
             'message' => 'Sedekah recorded successfully',
             'data' => $sedekah->load(['rt', 'amil'])
@@ -124,6 +126,8 @@ class SedekahController extends Controller
 
         $sedekah->update($validated);
 
+        $this->clearSedekahCache();
+
         return response()->json([
             'message' => 'Sedekah updated successfully',
             'data' => $sedekah->load(['rt', 'amil'])
@@ -134,70 +138,85 @@ class SedekahController extends Controller
     {
         $sedekah = Sedekah::findOrFail($id);
         $sedekah->delete();
+
+        $this->clearSedekahCache(); // Clear cache after data change
+
         return response()->json(['message' => 'Sedekah deleted successfully']);
     }
 
     public function summary(Request $request)
     {
         try {
-            $query = Sedekah::query();
+            $tahun = $request->get('tahun', date('Y'));
+            $bulan = $request->get('bulan');
+            $rtId = $request->get('rt_id');
             
-            if ($request->has('tahun')) {
-                $query->where('tahun', $request->tahun);
-            }
+            $cacheKey = "sedekah_summary_{$tahun}_" . ($bulan ?? 'all') . "_" . ($rtId ?? 'all');
 
-            if ($request->has('bulan')) {
-                $query->whereMonth('tanggal', $request->bulan);
-            }
+            $summaryData = Cache::remember($cacheKey, 900, function () use ($request, $tahun, $bulan, $rtId) {
+                $query = Sedekah::query();
+                
+                if ($tahun) $query->where('tahun', $tahun);
+                if ($bulan) $query->whereMonth('tanggal', $bulan);
+                if ($rtId) $query->where('rt_id', $rtId);
 
-            if ($request->has('rt_id')) {
-                $query->where('rt_id', $request->rt_id);
-            }
+                $penerimaan = (clone $query)->where('jenis', 'penerimaan')->sum('jumlah');
+                $penyaluran = (clone $query)->where('jenis', 'penyaluran')->sum('jumlah');
+                $count = $query->count();
 
-            $penerimaan = (clone $query)->where('jenis', 'penerimaan')->sum('jumlah');
-            $penyaluran = (clone $query)->where('jenis', 'penyaluran')->sum('jumlah');
-            $count = $query->count();
+                // Optimized breakdown by RT using single aggregate query
+                $statsByRT = Sedekah::where('jenis', 'penerimaan')
+                    ->select(
+                        'rt_id',
+                        DB::raw('SUM(jumlah) as total_nominal'),
+                        DB::raw('COUNT(*) as transaction_count'),
+                        DB::raw('MAX(tanggal) as last_txn_date')
+                    )
+                    ->when($tahun, fn($q) => $q->where('tahun', $tahun))
+                    ->when($bulan, fn($q) => $q->whereMonth('tanggal', $bulan))
+                    ->groupBy('rt_id')
+                    ->get()
+                    ->keyBy('rt_id');
 
-            // Optimized breakdown by RT using single aggregate query
-            $statsByRT = Sedekah::where('jenis', 'penerimaan')
-                ->select(
-                    'rt_id',
-                    DB::raw('SUM(jumlah) as total_nominal'),
-                    DB::raw('COUNT(*) as transaction_count'),
-                    DB::raw('MAX(tanggal) as last_txn_date')
-                )
-                ->when($request->has('tahun'), fn($q) => $q->where('tahun', $request->tahun))
-                ->when($request->has('bulan'), fn($q) => $q->whereMonth('tanggal', $request->bulan))
-                ->groupBy('rt_id')
-                ->get()
-                ->keyBy('rt_id');
+                $breakdownByRT = \App\Models\RT::all()->map(function($rt) use ($statsByRT) {
+                    $stats = $statsByRT->get($rt->id);
+                    return [
+                        'rt_id' => $rt->id,
+                        'rt_kode' => $rt->kode,
+                        'total_nominal' => (float) ($stats->total_nominal ?? 0),
+                        'transaction_count' => (int) ($stats->transaction_count ?? 0),
+                        'last_transaction' => $stats->last_txn_date ?? null
+                    ];
+                });
 
-            $breakdownByRT = \App\Models\RT::all()->map(function($rt) use ($statsByRT) {
-                $stats = $statsByRT->get($rt->id);
                 return [
-                    'rt_id' => $rt->id,
-                    'rt_kode' => $rt->kode,
-                    'total_nominal' => (float) ($stats->total_nominal ?? 0),
-                    'transaction_count' => (int) ($stats->transaction_count ?? 0),
-                    'last_transaction' => $stats->last_txn_date ?? null
+                    'success' => true,
+                    'data' => [
+                        'grand_total' => (float) $penerimaan,
+                        'total_expense' => (float) $penyaluran,
+                        'net_balance' => (float) ($penerimaan - $penyaluran),
+                        'total_transaksi' => $count,
+                        'breakdown' => $breakdownByRT,
+                        '_cached_at' => now()->toDateTimeString()
+                    ]
                 ];
             });
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'grand_total' => (float) $penerimaan,
-                    'total_expense' => (float) $penyaluran,
-                    'net_balance' => (float) ($penerimaan - $penyaluran),
-                    'total_transaksi' => $count,
-                    'breakdown' => $breakdownByRT
-                ]
-            ]);
+            return response()->json($summaryData);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    private function clearSedekahCache()
+    {
+        // Simple strategy: clear all sedekah related caches
+        // or clear for specific years. For simplicity with tags/patterns:
+        // Since Laravel doesn't support tag on file cache, we clear the known ones or use a version key.
+        Cache::flush(); // Brute force for now or specific keys if known
     }
 }

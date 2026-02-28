@@ -144,27 +144,29 @@ class AsnafStatisticsService
     }
 
     /**
-     * Get overall statistics summary
-     *
-     * @param int $tahun
-     * @return array
+     * Get overall statistics summary with caching
      */
     public function getOverallSummary(int $tahun, ?int $bulan = null): array
     {
-        $query = Asnaf::where('tahun', $tahun)->where('status', 'active');
-        if ($bulan) {
-            $query->whereMonth('created_at', $bulan);
-        }
-        
-        $total = $query->selectRaw('COUNT(*) as total_kk, SUM(jumlah_jiwa) as total_jiwa')->first();
+        $cacheKey = "asnaf_stats_summary_{$tahun}_" . ($bulan ?? 'all');
 
-        return [
-            'total_kk' => $total->total_kk ?? 0,
-            'total_jiwa' => $total->total_jiwa ?? 0,
-            'by_kategori' => $this->getCountByKategori($tahun, $bulan),
-            'by_rt' => $this->getCountByRT($tahun, $bulan),
-            'by_rt_kategori' => $this->getCountByRTAndKategori($tahun, $bulan),
-        ];
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addMinutes(10), function () use ($tahun, $bulan) {
+            $query = Asnaf::where('tahun', $tahun)->where('status', 'active');
+            if ($bulan) {
+                $query->whereMonth('created_at', $bulan);
+            }
+            
+            $total = $query->selectRaw('COUNT(*) as total_kk, SUM(jumlah_jiwa) as total_jiwa')->first();
+
+            return [
+                'total_kk' => $total->total_kk ?? 0,
+                'total_jiwa' => $total->total_jiwa ?? 0,
+                'by_kategori' => $this->getCountByKategori($tahun, $bulan),
+                'by_rt' => $this->getCountByRT($tahun, $bulan),
+                'by_rt_kategori' => $this->getCountByRTAndKategori($tahun, $bulan),
+                '_cached_at' => now()->toDateTimeString(),
+            ];
+        });
     }
 
     /**
@@ -198,93 +200,112 @@ class AsnafStatisticsService
      */
     public function getGraduationIndex(int $tahun): array
     {
-        $prevTahun = $tahun - 1;
+        $cacheKey = "asnaf_graduation_index_{$tahun}";
 
-        $currentAsnaf = Asnaf::with('rt')->where('tahun', $tahun)->where('status', 'active')->get();
-        $prevAsnaf = Asnaf::with('rt')->where('tahun', $prevTahun)->where('status', 'active')->get();
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addHours(1), function () use ($tahun) {
+            $prevTahun = $tahun - 1;
 
-        $prevMap = [];
-        foreach ($prevAsnaf as $asnaf) {
-            // Uniquely identify by RT and standardized name
-            $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
-            $prevMap[$key] = $asnaf;
-        }
+            // Use selection to reduce memory
+            $currentAsnaf = Asnaf::with('rt:id,kode')
+                ->select('id', 'rt_id', 'nama', 'kategori', 'score', 'tahun')
+                ->where('tahun', $tahun)
+                ->where('status', 'active')
+                ->get();
 
-        $currentMap = [];
-        foreach ($currentAsnaf as $asnaf) {
-            $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
-            $currentMap[$key] = $asnaf;
-        }
+            $prevAsnaf = Asnaf::with('rt:id,kode')
+                ->select('id', 'rt_id', 'nama', 'kategori', 'score', 'tahun')
+                ->where('tahun', $prevTahun)
+                ->where('status', 'active')
+                ->get();
 
-        $graduated = [];
-        $improved = [];
-        $declined = [];
-        $stagnant = [];
+            $prevMap = [];
+            foreach ($prevAsnaf as $asnaf) {
+                $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
+                $prevMap[$key] = $asnaf;
+            }
 
-        // Check for Asnaf from previous year
-        foreach ($prevMap as $key => $prev) {
-            if (!isset($currentMap[$key])) {
-                // If they were Fakir/Miskin but are no longer registered, consider them Graduated
-                if (in_array($prev->kategori, ['Fakir', 'Miskin'])) {
-                    $graduated[] = [
-                        'nama' => $prev->nama,
-                        'rt' => $prev->rt->kode,
-                        'alasan' => 'Tidak lagi terdaftar sebagai Mustahik (Mandiri)',
+            $currentMap = [];
+            foreach ($currentAsnaf as $asnaf) {
+                $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
+                $currentMap[$key] = $asnaf;
+            }
+
+            $graduated = [];
+            $improved = [];
+            $declined = [];
+            $stagnant = [];
+
+            foreach ($prevMap as $key => $prev) {
+                if (!isset($currentMap[$key])) {
+                    if (in_array($prev->kategori, ['Fakir', 'Miskin'])) {
+                        $graduated[] = [
+                            'nama' => $prev->nama,
+                            'rt' => $prev->rt->kode ?? '??',
+                            'alasan' => 'Tidak lagi terdaftar sebagai Mustahik (Mandiri)',
+                            'prev_kategori' => $prev->kategori,
+                            'prev_score' => $prev->score,
+                            'current_kategori' => '-',
+                            'current_score' => null,
+                            'delta_score' => null
+                        ];
+                    }
+                } else {
+                    $curr = $currentMap[$key];
+                    $deltaScore = ($curr->score ?? 0) - ($prev->score ?? 0);
+                    $isPoorBefore = in_array($prev->kategori, ['Fakir', 'Miskin']);
+                    $isPoorNow = in_array($curr->kategori, ['Fakir', 'Miskin']);
+
+                    $baseData = [
+                        'id' => $curr->id,
+                        'nama' => $curr->nama,
+                        'rt' => $curr->rt->kode ?? '??',
                         'prev_kategori' => $prev->kategori,
                         'prev_score' => $prev->score,
-                        'current_kategori' => '-',
-                        'current_score' => null,
-                        'delta_score' => null
+                        'current_kategori' => $curr->kategori,
+                        'current_score' => $curr->score,
+                        'delta_score' => $deltaScore
                     ];
-                }
-            } else {
-                $curr = $currentMap[$key];
-                $deltaScore = ($curr->score ?? 0) - ($prev->score ?? 0);
-                $isPoorBefore = in_array($prev->kategori, ['Fakir', 'Miskin']);
-                $isPoorNow = in_array($curr->kategori, ['Fakir', 'Miskin']);
 
-                $baseData = [
-                    'id' => $curr->id,
-                    'nama' => $curr->nama,
-                    'rt' => $curr->rt->kode,
-                    'prev_kategori' => $prev->kategori,
-                    'prev_score' => $prev->score,
-                    'current_kategori' => $curr->kategori,
-                    'current_score' => $curr->score,
-                    'delta_score' => $deltaScore
-                ];
-
-                if ($isPoorBefore && !$isPoorNow && in_array($curr->kategori, ['Mualaf', 'Ibnu Sabil', 'Fisabilillah', 'Amil', 'Gharim'])) {
-                    $baseData['alasan'] = 'Pindah ke kategori ' . $curr->kategori;
-                    $graduated[] = $baseData;
-                } elseif ($deltaScore > 0) {
-                    $improved[] = $baseData;
-                } elseif ($deltaScore < 0) {
-                    $declined[] = $baseData;
-                } else {
-                    $stagnant[] = $baseData;
+                    if ($isPoorBefore && !$isPoorNow && in_array($curr->kategori, ['Mualaf', 'Ibnu Sabil', 'Fisabilillah', 'Amil', 'Gharim'])) {
+                        $baseData['alasan'] = 'Pindah ke kategori ' . $curr->kategori;
+                        $graduated[] = $baseData;
+                    } elseif ($deltaScore > 0) {
+                        $improved[] = $baseData;
+                    } elseif ($deltaScore < 0) {
+                        $declined[] = $baseData;
+                    } else {
+                        $stagnant[] = $baseData;
+                    }
                 }
             }
-        }
 
-        // We can ignore brand NEW asnaf (in currentMap but not in prevMap) for social mobility tracking of existing ones,
-        // or we could classify them as "New Intake". For now, focus on mobility of previous cohort.
+            return [
+                'tahun' => $tahun,
+                'summary' => [
+                    'total_evaluated' => count($prevMap),
+                    'graduated' => count($graduated),
+                    'improved' => count($improved),
+                    'declined' => count($declined),
+                    'stagnant' => count($stagnant)
+                ],
+                'details' => [
+                    'graduated' => $graduated,
+                    'improved' => $improved,
+                    'declined' => $declined,
+                    'stagnant' => $stagnant
+                ],
+                '_cached_at' => now()->toDateTimeString(),
+            ];
+        });
+    }
 
-        return [
-            'tahun' => $tahun,
-            'summary' => [
-                'total_evaluated' => count($prevMap),
-                'graduated' => count($graduated),
-                'improved' => count($improved),
-                'declined' => count($declined),
-                'stagnant' => count($stagnant)
-            ],
-            'details' => [
-                'graduated' => $graduated,
-                'improved' => $improved,
-                'declined' => $declined,
-                'stagnant' => $stagnant
-            ]
-        ];
+    /**
+     * Clear statistics cache for a specific year
+     */
+    public function clearCache(int $tahun): void
+    {
+        \Illuminate\Support\Facades\Cache::forget("asnaf_stats_summary_{$tahun}_all");
+        \Illuminate\Support\Facades\Cache::forget("asnaf_graduation_index_{$tahun}");
+        \Illuminate\Support\Facades\Log::info("Asnaf Cache Cleared for year $tahun");
     }
 }
