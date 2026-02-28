@@ -62,9 +62,9 @@ const Dashboard = () => {
 
                 const [statsRes, muzakiRes, sedekahRes, realSedekahRes, muzakiStatsRes] = await Promise.all([
                     fetchAsnafStatistics(year),
-                    fetchZakatFitrahList({ per_page: 10, tahun: year, bulan: month }),
-                    fetchSedekahList({ per_page: 10, tahun: year, bulan: month }),
-                    fetchSedekahSummary({ tahun: year, bulan: month }),
+                    fetchZakatFitrahList({ per_page: 10, tahun: year }), // Global latest for year
+                    fetchSedekahList({ per_page: 10, tahun: year }),     // Global latest for year
+                    fetchSedekahSummary({ tahun: year }),                // Label says "Tahun Ini"
                     fetchMuzakiStats(year)
                 ]);
                 setAsnafStats(statsRes);
