@@ -66,17 +66,22 @@ class AssignmentController extends Controller
 
         $assignment->update($request->only(['jabatan', 'structure_id', 'status', 'no_sk', 'tanggal_mulai', 'tanggal_selesai', 'keterangan']));
 
-        if ($assignment->person) {
-            $personAttributes = $request->only(['nama', 'nama_lengkap', 'no_wa', 'alamat_domisili', 'nik', 'jenis_kelamin']);
-            
-            // Map 'nama' to 'nama_lengkap' if the frontend is using 'nama'
-            if (isset($personAttributes['nama']) && !isset($personAttributes['nama_lengkap'])) {
-                $personAttributes['nama_lengkap'] = $personAttributes['nama'];
-            }
+        $personAttributes = $request->only(['nama', 'nama_lengkap', 'no_wa', 'alamat_domisili', 'nik', 'jenis_kelamin']);
+        
+        // Map 'nama' to 'nama_lengkap' if the frontend is using 'nama'
+        if (isset($personAttributes['nama']) && !isset($personAttributes['nama_lengkap'])) {
+            $personAttributes['nama_lengkap'] = $personAttributes['nama'];
+        }
 
+        if ($assignment->person) {
             if (!empty($personAttributes)) {
                 $assignment->person->update($personAttributes);
             }
+        } else if (!empty($personAttributes['nama_lengkap'])) {
+            // Self-healing orphaned assignments
+            $person = \App\Models\Person::create($personAttributes);
+            $assignment->update(['person_id' => $person->id]);
+            $assignment->setRelation('person', $person);
         }
 
         return response()->json([
