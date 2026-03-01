@@ -96,18 +96,13 @@ export const updatePengurus = async (assignmentId, formData) => {
         status: formData.status,
         keterangan: formData.job_desk,
         tanggal_mulai: formData.periode_mulai + '-01-01',
-        tanggal_selesai: formData.status === 'Non-Aktif' ? new Date().toISOString().split('T')[0] : null
+        tanggal_selesai: formData.status === 'Non-Aktif' ? new Date().toISOString().split('T')[0] : null,
+        // Pass person data to the consolidated backend update
+        nama: formData.nama,
+        no_wa: formData.no_wa,
+        alamat_domisili: formData.alamat
     });
 
-    // 2. Update Person if person_id is known
-    // Since we usually have assignment.person_id, we should update that too
-    if (formData.person_id) {
-        await updatePerson(formData.person_id, {
-            nama_lengkap: formData.nama,
-            no_wa: formData.no_wa,
-            alamat_domisili: formData.alamat
-        });
-    }
-
+    // Note: Backend consolidated Person update into updateAssignment logic
     return assignRes.data;
 };
