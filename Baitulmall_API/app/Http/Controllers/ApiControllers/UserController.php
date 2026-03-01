@@ -41,10 +41,14 @@ class UserController extends Controller
         $user = User::with('person')->findOrFail($id);
         
         if (!$user->person) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User ini belum memiliki data Person (Biodata) terkait.'
-            ], 400);
+            // Create a default Person profile if it doesn't exist so we can add assignments
+            $person = \App\Models\Person::create([
+                'user_id' => $user->id,
+                'nama_lengkap' => $user->name,
+                'email' => $user->email,
+                'jenis_kelamin' => 'L', // Default, can be updated later
+            ]);
+            $user->setRelation('person', $person);
         }
 
         // Update or Create Assignment

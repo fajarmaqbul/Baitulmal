@@ -64,8 +64,26 @@ class AssignmentController extends Controller
         $assignment = Assignment::find($id);
         if (!$assignment) return response()->json(['message' => 'Not found'], 404);
 
-        $assignment->update($request->all());
-        return response()->json(['success' => true, 'data' => $assignment]);
+        $assignment->update($request->only(['jabatan', 'structure_id', 'status', 'no_sk', 'tanggal_mulai', 'tanggal_selesai', 'keterangan']));
+
+        if ($assignment->person) {
+            $personAttributes = $request->only(['nama', 'nama_lengkap', 'no_wa', 'alamat_domisili', 'nik', 'jenis_kelamin']);
+            
+            // Map 'nama' to 'nama_lengkap' if the frontend is using 'nama'
+            if (isset($personAttributes['nama']) && !isset($personAttributes['nama_lengkap'])) {
+                $personAttributes['nama_lengkap'] = $personAttributes['nama'];
+            }
+
+            if (!empty($personAttributes)) {
+                $assignment->person->update($personAttributes);
+            }
+        }
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'Data pengurus berhasil diperbarui',
+            'data' => $assignment->load('person', 'structure')
+        ]);
     }
 
     public function destroy($id)
