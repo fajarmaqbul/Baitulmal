@@ -21,7 +21,7 @@ return new class extends Migration
         DB::statement('CREATE INDEX IF NOT EXISTS zakat_fitrah_tahun_rt_index ON zakat_fitrah (tahun, rt_id)');
         
         // Index for performance in people and assignments
-        DB::statement('CREATE INDEX IF NOT EXISTS assignments_structure_status_index ON assignments (organization_structure_id, status)');
+        DB::statement('CREATE INDEX IF NOT EXISTS assignments_structure_status_index ON assignments (structure_id, status)');
     }
 
     /**
