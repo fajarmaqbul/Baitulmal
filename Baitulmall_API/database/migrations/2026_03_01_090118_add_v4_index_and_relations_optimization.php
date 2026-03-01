@@ -13,33 +13,20 @@ return new class extends Migration
     public function up(): void
     {
         // Muzaki optimizations
-        Schema::table('muzaki', function (Blueprint $table) {
-            $table->index(['tahun', 'rt_id']);
-            $table->index('status_bayar');
-        });
+        DB::statement('CREATE INDEX IF NOT EXISTS muzaki_tahun_rt_id_index ON muzaki (tahun, rt_id)');
+        DB::statement('CREATE INDEX IF NOT EXISTS muzaki_status_bayar_index ON muzaki (status_bayar)');
 
         // Other distributions and transactions
-        Schema::table('distribusi', function (Blueprint $table) {
-            $table->index(['tahun', 'status']);
-        });
-
-        Schema::table('sedekah', function (Blueprint $table) {
-            $table->index(['tanggal', 'tipe']);
-        });
+        DB::statement('CREATE INDEX IF NOT EXISTS distribusi_tahun_status_index ON distribusi (tahun, status)');
+        DB::statement('CREATE INDEX IF NOT EXISTS sedekah_tanggal_tipe_index ON sedekah (tanggal, tipe)');
 
         // Search optimization for people
-        Schema::table('people', function (Blueprint $table) {
-            $table->index('nama_lengkap');
-            $table->index('rt_id');
-        });
+        DB::statement('CREATE INDEX IF NOT EXISTS people_nama_lengkap_index ON people (nama_lengkap)');
+        DB::statement('CREATE INDEX IF NOT EXISTS people_rt_id_index ON people (rt_id)');
 
-        // Clean up or fix any potential issues from previous migrations
         // Ensure standard foreign key indexes exist
         if (Schema::hasTable('assignments')) {
-            Schema::table('assignments', function (Blueprint $table) {
-                // person_id and structure_id are often missing explicit indexes in rapid dev
-                $table->index('person_id');
-            });
+            DB::statement('CREATE INDEX IF NOT EXISTS assignments_person_id_index ON assignments (person_id)');
         }
     }
 
@@ -49,26 +36,26 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('muzaki', function (Blueprint $table) {
-            $table->dropIndex(['tahun', 'rt_id']);
-            $table->dropIndex(['status_bayar']);
+            try { $table->dropIndex(['tahun', 'rt_id']); } catch (\Exception $e) {}
+            try { $table->dropIndex(['status_bayar']); } catch (\Exception $e) {}
         });
 
         Schema::table('distribusi', function (Blueprint $table) {
-            $table->dropIndex(['tahun', 'status']);
+            try { $table->dropIndex(['tahun', 'status']); } catch (\Exception $e) {}
         });
 
         Schema::table('sedekah', function (Blueprint $table) {
-            $table->dropIndex(['tanggal', 'tipe']);
+            try { $table->dropIndex(['tanggal', 'tipe']); } catch (\Exception $e) {}
         });
 
         Schema::table('people', function (Blueprint $table) {
-            $table->dropIndex(['nama_lengkap']);
-            $table->dropIndex(['rt_id']);
+            try { $table->dropIndex(['nama_lengkap']); } catch (\Exception $e) {}
+            try { $table->dropIndex(['rt_id']); } catch (\Exception $e) {}
         });
 
         if (Schema::hasTable('assignments')) {
             Schema::table('assignments', function (Blueprint $table) {
-                $table->dropIndex(['person_id']);
+                try { $table->dropIndex(['person_id']); } catch (\Exception $e) {}
             });
         }
     }
