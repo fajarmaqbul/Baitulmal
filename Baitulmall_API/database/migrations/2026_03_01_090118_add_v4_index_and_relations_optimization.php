@@ -18,7 +18,7 @@ return new class extends Migration
 
         // Other distributions and transactions
         DB::statement('CREATE INDEX IF NOT EXISTS distribusi_tahun_status_index ON distribusi (tahun, status)');
-        DB::statement('CREATE INDEX IF NOT EXISTS sedekah_tanggal_tipe_index ON sedekah (tanggal, tipe)');
+        DB::statement('CREATE INDEX IF NOT EXISTS sedekah_tanggal_jenis_index ON sedekah (tanggal, jenis)');
 
         // Search optimization for people
         DB::statement('CREATE INDEX IF NOT EXISTS people_nama_lengkap_index ON people (nama_lengkap)');
@@ -45,7 +45,7 @@ return new class extends Migration
         });
 
         Schema::table('sedekah', function (Blueprint $table) {
-            try { $table->dropIndex(['tanggal', 'tipe']); } catch (\Exception $e) {}
+            try { $table->dropIndex(['tanggal', 'jenis']); } catch (\Exception $e) {}
         });
 
         Schema::table('people', function (Blueprint $table) {
