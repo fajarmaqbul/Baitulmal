@@ -263,3 +263,5 @@ Route::prefix('v1')->group(function () {
     Route::get('public/stories', [\App\Http\Controllers\ApiControllers\PublicController::class, 'stories']);
     Route::get('public/receipt/{type}/{id}', [\App\Http\Controllers\ApiControllers\PublicController::class, 'downloadReceipt']);
 });
+
+// Public sync trigger
