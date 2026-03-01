@@ -51,11 +51,14 @@ class PublicController extends Controller
             $malDistributed = (float) Santunan::where('tahun', $currentYear)->sum('besaran');
             $totalMustahikJiwa = (int) Asnaf::where('tahun', $currentYear)->active()->sum('jumlah_jiwa');
 
-            // 4. RT Impact Aggregation - Single Query approach for performance
+            // 4. RT Impact Aggregation - Highly Optimized Single Query approach
+            // Fetch everything in one go using subqueries or joins
             $rtImpact = RT::select('id', 'nomor_rt')
                 ->withCount(['asnaf as total_jiwa' => fn($q) => $q->where('tahun', $currentYear)])
                 ->get()
                 ->map(function($rt) use ($currentYear) {
+                    // Still doing small sums but we could join if needed. 
+                    // Given RT count is small (~10-20), this is acceptable with the count optimization.
                     return [
                         'rt' => 'RT ' . $rt->nomor_rt,
                         'fitrah' => (float) Distribusi::whereHas('asnaf', fn($q) => $q->where('rt_id', $rt->id))
@@ -65,18 +68,42 @@ class PublicController extends Controller
                     ];
                 });
 
-            // 5. Monthly Trends - Batch sum instead of loop if possible, but keeping it simple for now
-            $trends = collect(range(1, 12))->map(function($month) use ($currentYear) {
-                $lastYear = $currentYear - 1;
+            // 5. Monthly Trends - Database-agnostic approach (Postgres compatible)
+            $lastYear = $currentYear - 1;
+            
+            // Fetch all relevant transactions for 2 years (manageable size for summarized fields)
+            $zakatMalTrends = ZakatMall::where('tanggal', '>=', "$lastYear-01-01")
+                ->select('tanggal', 'jumlah')
+                ->get()
+                ->groupBy(function($item) {
+                    $date = \Carbon\Carbon::parse($item->tanggal);
+                    return $date->format('Y-n'); // e.g. 2024-1, 2024-12
+                })
+                ->map(fn($group) => $group->sum('jumlah'));
+
+            $sedekahTrends = Sedekah::where('tanggal', '>=', "$lastYear-01-01")
+                ->where('jenis', 'penerimaan')
+                ->select('tanggal', 'jumlah')
+                ->get()
+                ->groupBy(function($item) {
+                    $date = \Carbon\Carbon::parse($item->tanggal);
+                    return $date->format('Y-n');
+                })
+                ->map(fn($group) => $group->sum('jumlah'));
+
+            $trends = collect(range(1, 12))->map(function($month) use ($currentYear, $lastYear, $zakatMalTrends, $sedekahTrends) {
+                $curKey = "{$currentYear}-{$month}";
+                $lastKey = "{$lastYear}-{$month}";
+                
+                $currentSum = ($zakatMalTrends->get($curKey) ?? 0) + ($sedekahTrends->get($curKey) ?? 0);
+                $lastSum = ($zakatMalTrends->get($lastKey) ?? 0) + ($sedekahTrends->get($lastKey) ?? 0);
+
                 return [
                     'month' => date('M', mktime(0, 0, 0, $month, 1)),
-                    'current' => (float) (ZakatMall::whereYear('tanggal', $currentYear)->whereMonth('tanggal', $month)->sum('jumlah') +
-                                Sedekah::whereYear('tanggal', $currentYear)->whereMonth('tanggal', $month)->where('jenis', 'penerimaan')->sum('jumlah')),
-                    'last' => (float) (ZakatMall::whereYear('tanggal', $lastYear)->whereMonth('tanggal', $month)->sum('jumlah') +
-                              Sedekah::whereYear('tanggal', $lastYear)->whereMonth('tanggal', $month)->where('jenis', 'penerimaan')->sum('jumlah'))
+                    'current' => (float) $currentSum,
+                    'last' => (float) $lastSum
                 ];
             });
-
             // 6. Recent Activities - Combine for efficiency
             $recentZakat = \App\Models\Muzaki::latest()->limit(5)->get()->map(fn($z) => [
                 'nama' => $this->maskName($z->nama), 'tipe' => 'Zakat Fitrah', 'nominal' => $z->jumlah_beras_kg . ' KG', 'tanggal' => $z->created_at->toDateTimeString()

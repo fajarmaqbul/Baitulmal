@@ -32,8 +32,8 @@ class AppServiceProvider extends ServiceProvider
         if (config('database.default') === 'sqlite') {
             $dbPath = config('database.connections.sqlite.database');
             if (file_exists($dbPath)) {
-                \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA journal_mode=WAL;');
-                \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA synchronous=NORMAL;');
+                // \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA journal_mode=WAL;');
+                // \Illuminate\Support\Facades\DB::connection('sqlite')->getPdo()->exec('PRAGMA synchronous=NORMAL;');
             }
         }
     }

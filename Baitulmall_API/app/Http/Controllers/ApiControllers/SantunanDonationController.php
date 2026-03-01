@@ -30,6 +30,7 @@ class SantunanDonationController extends Controller
         ]);
 
         $donation = SantunanDonation::create($validated);
+        $this->clearCache();
 
         return response()->json([
             'message' => 'Santunan donation recorded successfully',
@@ -41,6 +42,13 @@ class SantunanDonationController extends Controller
     {
         $donation = SantunanDonation::findOrFail($id);
         $donation->delete();
+        $this->clearCache();
         return response()->json(['message' => 'Donation deleted successfully']);
+    }
+
+    private function clearCache()
+    {
+        \Illuminate\Support\Facades\Cache::forget('public_stats_aggregation_v2');
+        \Illuminate\Support\Facades\Cache::forget('public_live_stats');
     }
 }

@@ -10,7 +10,15 @@ class AssignmentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Assignment::with(['person', 'structure']);
+        // Use eager load count to fix N+1 issue
+        $query = Assignment::with([
+            'structure',
+            'person' => function($q) {
+                $q->withCount(['assignments as active_roles_count' => function($sq) {
+                    $sq->where('status', 'Aktif');
+                }]);
+            }
+        ]);
 
         if ($request->has('structure_id')) {
             $query->where('structure_id', $request->structure_id);
@@ -18,9 +26,8 @@ class AssignmentController extends Controller
 
         $assignments = $query->get()->map(function($a) {
             if ($a->person) {
-                $a->person->loadCount(['assignments' => function($q) {
-                    $q->where('status', 'Aktif');
-                }]);
+                // Flatten the count for easier UI access
+                $a->active_roles_count = $a->person->active_roles_count ?? 1;
             }
             return $a;
         });
@@ -77,23 +84,27 @@ class AssignmentController extends Controller
     public function kepengurusanView()
     {
         // Ideally we filter by structure code, e.g. BAITULMALL_2024
-        // For now, get all assignments
-        $assignments = Assignment::with(['person', 'structure'])->get();
+        // Fixed N+1 in legacy view helper
+        $assignments = Assignment::with([
+            'structure',
+            'person' => function($q) {
+                $q->withCount(['assignments as active_roles_count' => function($sq) {
+                    $sq->where('status', 'Aktif');
+                }]);
+            }
+        ])->get();
 
         $flattened = $assignments->map(function($a) {
-            // Check for double roles across all active assignments
-            $activeCount = \App\Models\Assignment::where('person_id', $a->person_id)
-                ->where('status', 'Aktif')
-                ->count();
+            $activeCount = $a->person->active_roles_count ?? 1;
 
             return [
                 'id' => $a->id,
                 'person_id' => $a->person_id,
-                'nama' => $a->person->nama_lengkap,
+                'nama' => $a->person->nama_lengkap ?? 'Unknown',
                 'jabatan' => $a->jabatan,
-                'divisi' => $a->structure->nama_struktur,
-                'alamat' => $a->person->alamat_domisili,
-                'no_wa' => $a->person->no_wa,
+                'divisi' => $a->structure->nama_struktur ?? '-',
+                'alamat' => $a->person->alamat_domisili ?? '-',
+                'no_wa' => $a->person->no_wa ?? '-',
                 'status' => $a->status,
                 'periode_mulai' => substr($a->tanggal_mulai, 0, 4),
                 'periode_selesai' => $a->tanggal_selesai ? substr($a->tanggal_selesai, 0, 4) : 'Sekarang',

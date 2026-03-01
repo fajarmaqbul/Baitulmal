@@ -23,6 +23,7 @@ const PERMISSION_GROUPS = [
         permissions: [
             { id: 'manage_zakat_fitrah', label: 'Zakat Fitrah', desc: 'Akses halaman Zakat Fitrah' },
             { id: 'manage_zakat_mall', label: 'Zakat Mall', desc: 'Hitung & catat zakat harta' },
+            { id: 'manage_zakat_produktif', label: 'Zakat Produktif', desc: 'Akses halaman Zakat Produktif' },
             { id: 'manage_muzaki', label: 'Input Muzaki', desc: 'Tambah/Edit data pemberi zakat' },
             { id: 'delete_muzaki', label: 'Hapus Muzaki', desc: 'Hapus data dari daftar muzaki' },
             { id: 'edit_zakat_config', label: 'Atur Kalkulasi', desc: 'Ubah porsi & jatah asnaf' },
@@ -41,6 +42,7 @@ const PERMISSION_GROUPS = [
             { id: 'confirm_distribution', label: 'Konfirmasi Distribusi', desc: 'Verifikasi & log pembagian zis' },
             { id: 'manage_sedekah', label: 'Sedekah & Infaq', desc: 'Catat kotak amal & infak umum' },
             { id: 'manage_santunan', label: 'Santunan Kematian', desc: 'Kelola dana sosial kematian' },
+            { id: 'manage_campaigns', label: 'Donasi Tematik', desc: 'Kelola program dana bantuan khusus' },
         ]
     },
     {
@@ -126,63 +128,66 @@ const RoleFormModal = ({ isOpen, onClose, onSave, initialData, isSubmitting }) =
                 <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-white to-blue-600 shrink-0"></div>
 
                 {/* Header - Compact */}
-                <div className="px-8 py-5 border-b flex justify-between items-center shrink-0" style={{ background: 'var(--card-footer-bg)', borderColor: 'var(--border-color)' }}>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white/5 rounded-xl border border-white/10">
-                            <Shield className="w-5 h-5 text-slate-300" />
+                <div className="px-8 py-5 border-b flex flex-col gap-4 shrink-0" style={{ background: 'var(--card-footer-bg)', borderColor: 'var(--border-color)' }}>
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white/5 rounded-xl border border-white/10">
+                                <Shield className="w-5 h-5 text-slate-300" />
+                            </div>
+                            <h2 className="text-lg font-black tracking-tight uppercase" style={{ color: 'var(--text-main)' }}>
+                                {initialData?.id ? 'Update Otoritas Role' : 'Registrasi Role Baru'}
+                            </h2>
                         </div>
-                        <h2 className="text-lg font-black tracking-tight uppercase" style={{ color: 'var(--text-main)' }}>
-                            {initialData ? 'Update Otoritas Role' : 'Registrasi Role Baru'}
-                        </h2>
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg transition-all group border"
+                            style={{ color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}
+                        >
+                            <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg transition-all group border"
-                        style={{ color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}
-                    >
-                        <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                    </button>
+
+                    {/* Nama Jabatan inside Header to keep it ALWAYS visible */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] ml-1 flex items-center gap-1">
+                            Nama Jabatan <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            autoFocus
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full border rounded-xl px-4 py-3.5 focus:ring-1 focus:ring-blue-500/50 transition-all outline-none font-bold text-sm bg-black/20"
+                            style={{ borderColor: formData.name ? 'var(--border-color)' : '#ef4444', color: 'var(--text-main)' }}
+                            placeholder="Wajib diisi. Contoh: MANAGER KEUANGAN"
+                            required
+                        />
+                    </div>
                 </div>
 
                 {/* Form Content - Scrolling Area */}
                 <form
                     onSubmit={handleSubmit}
-                    className="flex-1 overflow-y-auto px-8 py-10 space-y-12 flex flex-col min-h-0"
+                    className="flex-1 overflow-y-auto px-8 py-6 space-y-8 flex flex-col min-h-0"
                     style={{ background: 'var(--card-bg)' }}
                     id="role-form-content"
                 >
-                    {/* Basic Info */}
-                    <div className="space-y-5 px-2 shrink-0">
-                        <div className="flex flex-col gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Nama Jabatan</label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full border rounded-xl px-5 py-4 focus:ring-1 focus:ring-blue-500/20 transition-all outline-none font-bold"
-                                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
-                                    placeholder="Contoh: ADMIN KEUANGAN"
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Deskripsi</label>
-                                <input
-                                    type="text"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full border rounded-xl px-5 py-4 focus:ring-1 focus:ring-blue-500/20 transition-all outline-none text-sm"
-                                    style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
-                                    placeholder="Keterangan singkat fungsi role ini..."
-                                />
-                            </div>
-                        </div>
+                    {/* Description */}
+                    <div className="space-y-2 shrink-0">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Deskripsi Tambahan</label>
+                        <input
+                            type="text"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full border rounded-xl px-5 py-3 focus:ring-1 focus:ring-blue-500/20 transition-all outline-none text-xs"
+                            style={{ background: 'var(--input-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
+                            placeholder="Apa tanggung jawab utama role ini? (Opsional)"
+                        />
                     </div>
 
                     {/* Permission Matriks - Dynamic Height */}
-                    <div className="space-y-12 px-2 pb-10">
-                        <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="space-y-10 pb-10">
+                        <div className="flex items-center gap-3 pb-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
                             <div className="h-1 w-6 bg-blue-500 rounded-full"></div>
                             <h3 className="text-sm font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Matriks Otoritas</h3>
                         </div>
@@ -256,10 +261,14 @@ const RoleFormModal = ({ isOpen, onClose, onSave, initialData, isSubmitting }) =
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting || !formData.name}
-                        className="px-10 py-3 bg-blue-600 text-white text-[10px] font-black rounded-xl transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-30 flex items-center gap-2 uppercase tracking-[0.2em] shadow-xl"
+                        className="px-10 py-4 bg-blue-600 text-white text-[10px] font-black rounded-xl transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-30 disabled:grayscale flex items-center gap-2 uppercase tracking-[0.2em] shadow-xl"
                     >
-                        {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {initialData ? 'Update Role' : 'Simpan Role'}
+                        {isSubmitting ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Save className="w-4 h-4" />
+                        )}
+                        {initialData?.id ? 'Update Role' : 'Simpan Role'}
                     </button>
                 </div>
             </div>

@@ -27,6 +27,9 @@ const UserPreference = lazy(() => import('./pages/UserPreference'));
 const SettingPage = lazy(() => import('./pages/SettingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const GoogleCallbackPage = lazy(() => import('./pages/GoogleCallbackPage'));
 const AssetList = lazy(() => import('./pages/Inventory/AssetList'));
 const LoanManagement = lazy(() => import('./pages/Inventory/LoanManagement'));
 const CampaignList = lazy(() => import('./pages/Crowdfunding/CampaignList'));
@@ -68,6 +71,9 @@ const App = () => {
             <Route path="/etalase" element={<Etalase />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/login/callback" element={<GoogleCallbackPage />} />
             <Route path="/tatakelola" element={<TataKelola />} />
             <Route path="/tatakelola/zakat-fitrah" element={<TataKelolaZakatFitrah />} />
             <Route path="/tatakelola/zakat-produktif" element={<TataKelolaZakatProduktif />} />

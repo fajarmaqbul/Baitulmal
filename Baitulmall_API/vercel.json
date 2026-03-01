@@ -35,7 +35,7 @@
     "env": {
         "APP_NAME": "Baitulmall Masjid Kandri",
         "APP_ENV": "production",
-        "APP_DEBUG": "true",
+        "APP_DEBUG": "false",
         "LOG_CHANNEL": "stderr",
         "DB_CONNECTION": "pgsql",
         "VERCEL": "1",

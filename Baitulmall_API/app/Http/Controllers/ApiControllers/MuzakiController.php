@@ -43,6 +43,8 @@ class MuzakiController extends Controller
 
             return response()->json($query->paginate($request->get('per_page', 20)));
         } catch (\Throwable $e) {
+            // Log or handle error without crashing
+            \Illuminate\Support\Facades\Log::error("Muzaki index error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -76,6 +78,7 @@ class MuzakiController extends Controller
         $validated['updated_by'] = $request->user()?->id;
 
         $muzaki = Muzaki::create($validated);
+        $this->clearCache($muzaki->tahun);
 
         return response()->json([
             'message' => 'Muzaki created successfully',
@@ -120,6 +123,10 @@ class MuzakiController extends Controller
         $validated['updated_by'] = $request->user()?->id;
 
         $muzaki->update($validated);
+        $this->clearCache($muzaki->tahun);
+        if (isset($validated['tahun']) && $validated['tahun'] != $muzaki->getOriginal('tahun')) {
+            $this->clearCache($muzaki->getOriginal('tahun'));
+        }
 
         return response()->json([
             'message' => 'Muzaki updated successfully',
@@ -134,6 +141,7 @@ class MuzakiController extends Controller
     {
         $muzaki = Muzaki::findOrFail($id);
         $muzaki->delete();
+        $this->clearCache($muzaki->tahun);
 
         return response()->json(['message' => 'Muzaki deleted successfully']);
     }
@@ -144,26 +152,35 @@ class MuzakiController extends Controller
     public function stats(Request $request)
     {
         $tahun = $request->get('tahun', date('Y'));
-        
-        try {
-            $totalBeras = Muzaki::where('tahun', $tahun)->sum('jumlah_beras_kg');
-            $totalJiwa = Muzaki::where('tahun', $tahun)->sum('jumlah_jiwa');
-            $totalMuzaki = Muzaki::where('tahun', $tahun)->count();
+        $cacheKey = "muzaki_stats_{$tahun}";
 
-            return response()->json([
-                'tahun' => $tahun,
-                'total_beras' => (float) $totalBeras,
-                'total_jiwa' => (int) $totalJiwa,
-                'total_muzaki' => $totalMuzaki
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'tahun' => $tahun,
-                'total_beras' => 0,
-                'total_jiwa' => 0,
-                'total_muzaki' => 0,
-                'error' => $e->getMessage()
-            ]);
-        }
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($tahun) {
+            try {
+                $totalBeras = Muzaki::where('tahun', $tahun)->sum('jumlah_beras_kg');
+                $totalJiwa = Muzaki::where('tahun', $tahun)->sum('jumlah_jiwa');
+                $totalMuzaki = Muzaki::where('tahun', $tahun)->count();
+
+                return [
+                    'tahun' => $tahun,
+                    'total_beras' => (float) $totalBeras,
+                    'total_jiwa' => (int) $totalJiwa,
+                    'total_muzaki' => $totalMuzaki,
+                    '_cached_at' => now()->toDateTimeString()
+                ];
+            } catch (\Throwable $e) {
+                return [
+                    'tahun' => $tahun,
+                    'total_beras' => 0,
+                    'total_jiwa' => 0,
+                    'total_muzaki' => 0,
+                    'error' => $e->getMessage()
+                ];
+            }
+        });
+    }
+
+    private function clearCache($tahun)
+    {
+        \Illuminate\Support\Facades\Cache::forget("muzaki_stats_{$tahun}");
     }
 }

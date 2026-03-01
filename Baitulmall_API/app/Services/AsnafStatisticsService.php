@@ -205,30 +205,21 @@ class AsnafStatisticsService
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addHours(1), function () use ($tahun) {
             $prevTahun = $tahun - 1;
 
-            // Use selection to reduce memory
             $currentAsnaf = Asnaf::with('rt:id,kode')
-                ->select('id', 'rt_id', 'nama', 'kategori', 'score', 'tahun')
+                ->select(['id', 'rt_id', 'nama', 'kategori', 'score', 'tahun'])
                 ->where('tahun', $tahun)
                 ->where('status', 'active')
                 ->get();
 
             $prevAsnaf = Asnaf::with('rt:id,kode')
-                ->select('id', 'rt_id', 'nama', 'kategori', 'score', 'tahun')
+                ->select(['id', 'rt_id', 'nama', 'kategori', 'score', 'tahun'])
                 ->where('tahun', $prevTahun)
                 ->where('status', 'active')
                 ->get();
 
-            $prevMap = [];
-            foreach ($prevAsnaf as $asnaf) {
-                $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
-                $prevMap[$key] = $asnaf;
-            }
-
-            $currentMap = [];
-            foreach ($currentAsnaf as $asnaf) {
-                $key = $asnaf->rt_id . '_' . strtolower(trim($asnaf->nama));
-                $currentMap[$key] = $asnaf;
-            }
+            // Use keyed collection for $O(1)$ lookup
+            $prevMap = $prevAsnaf->keyBy(fn($item) => $item->rt_id . '_' . strtolower(trim($item->nama)));
+            $currentMap = $currentAsnaf->keyBy(fn($item) => $item->rt_id . '_' . strtolower(trim($item->nama)));
 
             $graduated = [];
             $improved = [];
@@ -236,7 +227,7 @@ class AsnafStatisticsService
             $stagnant = [];
 
             foreach ($prevMap as $key => $prev) {
-                if (!isset($currentMap[$key])) {
+                if (!$currentMap->has($key)) {
                     if (in_array($prev->kategori, ['Fakir', 'Miskin'])) {
                         $graduated[] = [
                             'nama' => $prev->nama,

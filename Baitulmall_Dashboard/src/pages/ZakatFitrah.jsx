@@ -197,17 +197,38 @@ const ZakatFitrah = () => {
     }, [settingsList]);
 
 
+    // Calculate default portion if not found
+    const getDefaultPortion = useCallback((cat) => {
+        if (cat === 'Fakir') return 2;
+        if (cat === 'Miskin') return 3;
+        if (cat === 'Amil' || cat === 'Fisabilillah') return 1;
+        return 0;
+    }, []);
+
+    // Source of Truth for effective portions (merged with defaults)
+    const getEffectivePortions = useCallback(() => {
+        return ASNAF_CATEGORIES.reduce((acc, cat) => {
+            acc[cat] = (asnafPortions && asnafPortions[cat] !== undefined)
+                ? asnafPortions[cat]
+                : getDefaultPortion(cat);
+            return acc;
+        }, {});
+    }, [asnafPortions, getDefaultPortion]);
+
     const handlePortionChange = useCallback((category, value) => {
         if (isLocked) return;
-        setAsnafPortions(prev => ({
-            ...prev,
-            [category]: parseFloat(value) || 0
-        }));
-    }, [isLocked, setAsnafPortions]);
+        setAsnafPortions(prev => {
+            const current = prev || getEffectivePortions();
+            return {
+                ...current,
+                [category]: parseFloat(value) || 0
+            };
+        });
+    }, [isLocked, getEffectivePortions, setAsnafPortions]);
 
     const handleSaveDistributionConfig = () => {
-        // Calculate total percentage for early validation
-        const portionsData = asnafPortions || ASNAF_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {});
+        // Calculate total percentage for early validation using source of truth
+        const portionsData = getEffectivePortions();
         const totalPercentage = Object.values(portionsData).reduce((acc, p) => acc + (p * 0.125), 0);
 
         if (Math.abs(totalPercentage - 1) > 0.0001) {
@@ -222,8 +243,8 @@ const ZakatFitrah = () => {
         try {
             setConfirmLockModal(prev => ({ ...prev, loading: true }));
 
-            // 1. Save/Update asnaf_portions
-            const portionsData = asnafPortions || ASNAF_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {});
+            // 1. Save/Update asnaf_portions using source of truth
+            const portionsData = getEffectivePortions();
             const portionsValue = JSON.stringify(portionsData);
 
             const existingPortions = settingsList.find(s => s.key_name === 'asnaf_portions');
@@ -452,13 +473,7 @@ const ZakatFitrah = () => {
     // Logic: 1 Portion = 12.5% (0.125) of Total Beras
     const BASE_SHARE = 0.125;
 
-    // Calculate default portion if not found
-    const getDefaultPortion = useCallback((cat) => {
-        if (cat === 'Fakir') return 2;
-        if (cat === 'Miskin') return 3;
-        if (cat === 'Amil' || cat === 'Fisabilillah') return 1;
-        return 0;
-    }, []);
+    // (moved getDefaultPortion up)
 
     // First, let's calculate total portions and percentages for proper splitting
     const totalSelectedPortions = useMemo(() => ASNAF_CATEGORIES.reduce((acc, cat) => acc + ((asnafPortions && asnafPortions[cat]) ?? getDefaultPortion(cat)), 0), [asnafPortions, getDefaultPortion]);

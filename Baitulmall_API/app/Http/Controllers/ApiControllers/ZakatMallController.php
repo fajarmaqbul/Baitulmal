@@ -55,6 +55,7 @@ class ZakatMallController extends Controller
         ]);
 
         $zakatMall = ZakatMall::create($validated);
+        $this->clearCache();
 
         // Generate Receipt PDF
         $receiptPath = $this->receiptService->generateReceipt('mall', $zakatMall);
@@ -108,6 +109,7 @@ class ZakatMallController extends Controller
         ]);
 
         $zakatMall->update($validated);
+        $this->clearCache();
 
         return response()->json([
             'message' => 'Zakat Mall updated successfully',
@@ -122,7 +124,14 @@ class ZakatMallController extends Controller
     {
         $zakatMall = ZakatMall::findOrFail($id);
         $zakatMall->delete();
+        $this->clearCache();
 
         return response()->json(['message' => 'Zakat Mall deleted successfully']);
+    }
+
+    private function clearCache()
+    {
+        \Illuminate\Support\Facades\Cache::forget('public_stats_aggregation_v2');
+        \Illuminate\Support\Facades\Cache::forget('public_live_stats');
     }
 }

@@ -26,6 +26,11 @@ class SedekahObserver
     protected function clearCacheAndBroadcast(int $tahun): void
     {
         Cache::forget("dashboard_stats_summary_{$tahun}");
+        Cache::forget("sedekah_summary_{$tahun}_all_all");
+        
+        Cache::forget("public_stats_aggregation_v2");
+        Cache::forget("public_live_stats");
+        
         event(new DashboardUpdated());
     }
 }

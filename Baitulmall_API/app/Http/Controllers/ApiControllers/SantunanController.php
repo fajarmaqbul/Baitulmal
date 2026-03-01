@@ -67,6 +67,7 @@ class SantunanController extends Controller
         }
 
         $santunan = Santunan::create($validated);
+        $this->clearCache();
 
         return response()->json([
             'message' => 'Santunan record created successfully',
@@ -130,6 +131,7 @@ class SantunanController extends Controller
         }
 
         $santunan->update($validated);
+        $this->clearCache();
         return response()->json([
             'message' => 'Santunan record updated successfully',
             'data' => $santunan->load(['rt', 'beneficiary'])
@@ -142,6 +144,7 @@ class SantunanController extends Controller
             \Illuminate\Support\Facades\Log::info("Attempting to delete Santunan ID: " . $id);
             $santunan = Santunan::findOrFail($id);
             $santunan->delete();
+            $this->clearCache();
             \Illuminate\Support\Facades\Log::info("Deleted Santunan ID: " . $id);
             return response()->json(['message' => 'Santunan record deleted successfully']);
         } catch (\Exception $e) {
@@ -152,46 +155,56 @@ class SantunanController extends Controller
     public function summary(Request $request)
     {
         $tahun = $request->get('tahun', date('Y'));
-        
-        // 1. Penerimaan (Strict: From SantunanDonation)
-        $penerimaanQuery = \App\Models\SantunanDonation::where('tahun', $tahun);
-        if ($request->has('activity_id')) {
-            $penerimaanQuery->where('activity_id', $request->activity_id);
-        }
-        $totalPenerimaan = $penerimaanQuery->sum('jumlah');
+        $actId = $request->get('activity_id');
+        $rtId = $request->get('rt_id');
 
-        // 2. Penyaluran (Strict: From Santunan Distribution Table)
-        $penyaluranQuery = Santunan::where('tahun', $tahun)
-                                   ->where('status_penerimaan', 'sudah'); // Only disbursed funds
-        
-        if ($request->has('activity_id')) {
-            $penyaluranQuery->where('activity_id', $request->activity_id);
-        }
-        if ($request->has('rt_id')) {
-            $penyaluranQuery->where('rt_id', $request->rt_id);
-        }
+        $cacheKey = "santunan_summary_{$tahun}_" . ($actId ?? 'all') . "_" . ($rtId ?? 'all');
 
-        // Breakdown by Category (Yatim vs Dhuafa)
-        $totalYatim = (clone $penyaluranQuery)->where('kategori', 'yatim')->sum('besaran');
-        $totalDhuafa = (clone $penyaluranQuery)->where('kategori', 'dhuafa')->sum('besaran');
-        $totalPenyaluran = $totalYatim + $totalDhuafa;
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($tahun, $actId, $rtId) {
+            // 1. Penerimaan (Strict: From SantunanDonation)
+            $penerimaanQuery = \App\Models\SantunanDonation::where('tahun', $tahun);
+            if ($actId) $penerimaanQuery->where('activity_id', $actId);
+            $totalPenerimaan = $penerimaanQuery->sum('jumlah');
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'penerimaan' => $totalPenerimaan,
-                'penyaluran' => [
-                    'total' => $totalPenyaluran,
-                    'yatim' => $totalYatim,
-                    'dhuafa' => $totalDhuafa
-                ],
-                'saldo' => $totalPenerimaan - $totalPenyaluran // Calculated on-the-fly
-            ]
-        ]);
+            // 2. Penyaluran (Strict: From Santunan Distribution Table)
+            $penyaluranQuery = Santunan::where('tahun', $tahun)->where('status_penerimaan', 'sudah');
+            if ($actId) $penyaluranQuery->where('activity_id', $actId);
+            if ($rtId) $penyaluranQuery->where('rt_id', $rtId);
+
+            // Breakdown by Category
+            $totalYatim = (clone $penyaluranQuery)->where('kategori', 'yatim')->sum('besaran');
+            $totalDhuafa = (clone $penyaluranQuery)->where('kategori', 'dhuafa')->sum('besaran');
+            $totalPenyaluran = $totalYatim + $totalDhuafa;
+
+            return [
+                'success' => true,
+                'data' => [
+                    'penerimaan' => (float)$totalPenerimaan,
+                    'penyaluran' => [
+                        'total' => (float)$totalPenyaluran,
+                        'yatim' => (float)$totalYatim,
+                        'dhuafa' => (float)$totalDhuafa
+                    ],
+                    'saldo' => (float)($totalPenerimaan - $totalPenyaluran),
+                    '_cached_at' => now()->toDateTimeString()
+                ]
+            ];
+        });
     }
 
     public function getActivities()
     {
-        return response()->json(\App\Models\SantunanActivity::withCount(['donations', 'distributions'])->orderBy('created_at', 'desc')->get());
+        return \Illuminate\Support\Facades\Cache::remember('santunan_activities_list', 600, function() {
+            return \App\Models\SantunanActivity::withCount(['donations', 'distributions'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+        });
+    }
+
+    private function clearCache()
+    {
+        // Simple strategy: Clear all santunan related caches
+        \Illuminate\Support\Facades\Cache::flush(); 
+        // In a real app we'd target specific keys, but flush is safe for small-mid sized shared cache if needed.
     }
 }

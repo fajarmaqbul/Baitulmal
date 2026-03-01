@@ -28,7 +28,7 @@ export const login = async (email, password) => {
                 },
                 timestamp: Date.now(),
             }),
-        }).catch(() => {});
+        }).catch(() => { });
         // #endregion
 
         return response.data;
@@ -61,26 +61,24 @@ export const logout = async () => {
 export const getUser = async () => {
     try {
         const response = await api.get('/user');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
 
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/621e1365-05bc-449d-a714-261349822a08', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sessionId: 'debug-session',
-                runId: 'auth-run-1',
-                hypothesisId: 'H2-H4',
-                location: 'authApi.getUser:response',
-                message: 'GetUser API response shape',
-                data: {
-                    has_success_flag: typeof response.data.success !== 'undefined',
-                    has_data_field: typeof response.data.data !== 'undefined',
-                },
-                timestamp: Date.now(),
-            }),
-        }).catch(() => {});
-        // #endregion
+export const forgotPassword = async (email) => {
+    try {
+        const response = await api.post('/forgot-password', { email });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
 
+export const resetPassword = async (data) => {
+    try {
+        const response = await api.post('/reset-password', data);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

@@ -215,9 +215,13 @@ class SedekahController extends Controller
 
     private function clearSedekahCache()
     {
-        // Simple strategy: clear all sedekah related caches
-        // or clear for specific years. For simplicity with tags/patterns:
-        // Since Laravel doesn't support tag on file cache, we clear the known ones or use a version key.
-        Cache::flush(); // Brute force for now or specific keys if known
+        // Targeted cache clearing for better performance
+        \Illuminate\Support\Facades\Cache::forget('public_stats_aggregation_v2');
+        \Illuminate\Support\Facades\Cache::forget('public_live_stats');
+        
+        // We could also loop through years, but since summary is year-specific
+        // we might want to clear specific years if known. For now, this ensures 
+        // the most visible pages (Public & Dashboard) are refreshed.
+        \Illuminate\Support\Facades\Log::info("Sedekah/Public Cache Cleared");
     }
 }

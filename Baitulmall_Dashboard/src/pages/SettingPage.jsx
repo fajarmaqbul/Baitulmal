@@ -797,10 +797,11 @@ const SettingPage = () => {
                     />
 
                     <RoleFormModal
+                        key={roleModal.data?.id || 'new'}
                         isOpen={roleModal.open}
                         onClose={() => setRoleModal({ open: false, data: null })}
                         onSave={handleSaveRole}
-                        roleData={roleModal.data}
+                        initialData={roleModal.data}
                         isSubmitting={submitting}
                     />
                 </div>

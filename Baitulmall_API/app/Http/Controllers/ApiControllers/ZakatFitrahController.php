@@ -23,31 +23,35 @@ class ZakatFitrahController extends Controller
     {
         $tahun = $routeTahun ?? $request->get('tahun', date('Y'));
         $bulan = $request->get('bulan');
-        
-        $query = Muzaki::where('tahun', $tahun);
-        if ($bulan) {
-            $query->whereMonth('tanggal_bayar', $bulan);
-        }
-        
-        $totalBeras = (clone $query)->sum('jumlah_beras_kg');
-        $totalJiwa = (clone $query)->sum('jumlah_jiwa');
-        $totalUang = (clone $query)->sum('jumlah_uang'); 
+        $cacheKey = "zakat_fitrah_summary_{$tahun}_" . ($bulan ?? 'all');
 
-        // Penyaluran Zakat Fitrah? Ref: distribution table or generic Distribution?
-        // Usually Zakat Fitrah is fully distributed.
-        // For dashboard "Saldo", Zakat Fitrah generally should be 0 saldo after Eid.
-        // But for "Penyaluran" stat, we might need to check 'Distribusi' table or 'ZakatFitrahDistribution'.
-        // For now, returning Collection stats.
+        return Cache::remember($cacheKey, 300, function () use ($tahun, $bulan) {
+            $query = Muzaki::where('tahun', $tahun);
+            if ($bulan) {
+                $query->whereMonth('tanggal_bayar', $bulan);
+            }
+            
+            $totalBeras = (float)(clone $query)->sum('jumlah_beras_kg');
+            $totalJiwa = (int)(clone $query)->sum('jumlah_jiwa');
+            $totalUang = (float)(clone $query)->sum('jumlah_uang'); 
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total_penerimaan_beras' => $totalBeras,
-                'total_penerimaan_uang' => $totalUang,
-                'total_jiwa' => $totalJiwa,
-                // 'total_penyaluran' => ... implementation pending distribution logic
-            ]
-        ]);
+            return [
+                'success' => true,
+                'data' => [
+                    'total_penerimaan_beras' => $totalBeras,
+                    'total_penerimaan_uang' => $totalUang,
+                    'total_jiwa' => $totalJiwa,
+                    '_cached_at' => now()->toDateTimeString()
+                ]
+            ];
+        });
+    }
+
+    private function clearFitrahCache($tahun)
+    {
+        Cache::forget("zakat_fitrah_summary_{$tahun}_all");
+        Cache::forget("zakat_fitrah_stats_{$tahun}");
+        // Also clear monthly if needed, or just flush if small enough
     }
 
     public function stats(Request $request)
@@ -117,7 +121,7 @@ class ZakatFitrahController extends Controller
         }
         
         // Clear cache
-        Cache::forget("zakat_fitrah_stats_{$validated['tahun']}");
+        $this->clearFitrahCache($zakat->tahun);
 
         return response()->json(['message' => 'Data recorded', 'data' => $zakat], 201);
     }
@@ -142,7 +146,7 @@ class ZakatFitrahController extends Controller
         $zakat->update($validated);
         
         // Clear cache for both old and new year just in case
-        Cache::forget("zakat_fitrah_stats_{$zakat->tahun}");
+        $this->clearFitrahCache($zakat->tahun);
 
         return response()->json(['message' => 'Data updated', 'data' => $zakat->load('rt')]);
     }
@@ -157,7 +161,7 @@ class ZakatFitrahController extends Controller
         $zakat->delete();
         
         // Clear cache
-        \Illuminate\Support\Facades\Cache::forget("zakat_fitrah_stats_{$tahun}");
+        $this->clearFitrahCache($tahun);
 
         return response()->json(['message' => 'Data deleted']);
     }

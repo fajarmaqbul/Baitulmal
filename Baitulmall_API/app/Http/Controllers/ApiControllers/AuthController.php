@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -55,42 +57,101 @@ class AuthController extends Controller
     }
 
     /**
+     * Send password reset link.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email tidak terdaftar'
+            ], 404);
+        }
+
+        // Generate token manually or via Password broker
+        // For API, we often just create a token entry
+        $token = \Illuminate\Support\Str::random(64);
+        
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            ['token' => $token, 'created_at' => now()]
+        );
+
+        // In a real app, you'd send an email here.
+        // For this project, we'll return the token in the response for debugging/demo purposes 
+        // if app_env is local, otherwise just say "Check email"
+        
+        $debugInfo = [];
+        if (config('app.env') === 'local') {
+            $debugInfo['reset_url'] = "http://localhost:5173/reset-password?token=$token&email=" . urlencode($request->email);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tautan pemulihan kata sandi telah dikirim ke email Anda.',
+            ...$debugInfo
+        ]);
+    }
+
+    /**
+     * Reset password using token.
+     */
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'password.min' => 'Kata sandi minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $record = \Illuminate\Support\Facades\DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->where('token', $request->token)
+            ->first();
+
+        if (!$record || \Carbon\Carbon::parse($record->created_at)->addHours(2)->isPast()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak valid atau sudah kadaluarsa.'
+            ], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) return response()->json(['success' => false, 'message' => 'User tidak ditemukan.'], 404);
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        // Delete token
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kata sandi berhasil diperbarui. Silakan masuk kembali.'
+        ]);
+    }
+
+    /**
      * Handle user login.
      */
     public function login(Request $request)
     {
-        // #region agent log
-        try {
-            // Derive workspace root from Laravel base_path():
-            // base_path() = d:\Baitulmall\Baitulmall_API  => workspace = d:\Baitulmall
-            $workspaceRoot = \dirname(\base_path());
-            $logDir = $workspaceRoot . DIRECTORY_SEPARATOR . '.cursor';
-            if (!\is_dir($logDir)) {
-                @\mkdir($logDir, 0777, true);
-            }
-            $logFile = $logDir . DIRECTORY_SEPARATOR . 'debug.log';
-
-            $payload = [
-                'sessionId' => 'debug-session',
-                'runId' => 'auth-run-1',
-                'hypothesisId' => 'H1-H4',
-                'location' => 'AuthController@login:entry',
-                'message' => 'Login attempt',
-                'data' => [
-                    'has_email' => $request->filled('email'),
-                    'has_password' => $request->filled('password'),
-                    'ip' => $request->ip(),
-                    'user_agent_present' => $request->header('User-Agent') !== null,
-                ],
-                'timestamp' => round(microtime(true) * 1000),
-            ];
-            @file_put_contents($logFile, json_encode($payload) . PHP_EOL, FILE_APPEND);
-            Log::info('agent_debug', $payload);
-        } catch (\Throwable $e) {
-            // swallow logging errors
-        }
-        // #endregion
-
         if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
                 'success' => false,
@@ -99,37 +160,6 @@ class AuthController extends Controller
         }
 
         $user = User::with(['person.assignments.structure', 'person.assignments.role'])->where('email', $request['email'])->firstOrFail();
-
-        // #region agent log
-        try {
-            $workspaceRoot = \dirname(\base_path());
-            $logDir = $workspaceRoot . DIRECTORY_SEPARATOR . '.cursor';
-            if (!\is_dir($logDir)) {
-                @\mkdir($logDir, 0777, true);
-            }
-            $logFile = $logDir . DIRECTORY_SEPARATOR . 'debug.log';
-
-            $assignments = optional($user->person)->assignments;
-            $payload = [
-                'sessionId' => 'debug-session',
-                'runId' => 'auth-run-1',
-                'hypothesisId' => 'H1-H3',
-                'location' => 'AuthController@login:loaded_user',
-                'message' => 'Loaded user after successful login',
-                'data' => [
-                    'user_id' => $user->id,
-                    'has_person' => $user->relationLoaded('person') && $user->person !== null,
-                    'assignment_count' => $assignments ? $assignments->count() : 0,
-                    'has_structure_on_first_assignment' => ($assignments && $assignments->first() && $assignments->first()->relationLoaded('structure')),
-                ],
-                'timestamp' => round(microtime(true) * 1000),
-            ];
-            @file_put_contents($logFile, json_encode($payload) . PHP_EOL, FILE_APPEND);
-            Log::info('agent_debug', $payload);
-        } catch (\Throwable $e) {
-            // swallow logging errors
-        }
-        // #endregion
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -162,37 +192,57 @@ class AuthController extends Controller
     {
         $user = $request->user()->load(['person.assignments.structure', 'person.assignments.role']);
 
-        // #region agent log
-        try {
-            $workspaceRoot = \dirname(\base_path());
-            $logDir = $workspaceRoot . DIRECTORY_SEPARATOR . '.cursor';
-            if (!\is_dir($logDir)) {
-                @\mkdir($logDir, 0777, true);
-            }
-            $logFile = $logDir . DIRECTORY_SEPARATOR . 'debug.log';
-
-            $payload = [
-                'sessionId' => 'debug-session',
-                'runId' => 'auth-run-1',
-                'hypothesisId' => 'H2-H4',
-                'location' => 'AuthController@user:response',
-                'message' => 'Auth user endpoint response shape',
-                'data' => [
-                    'user_id' => $user ? $user->id : null,
-                    'has_person_relation' => $user && method_exists($user, 'person'),
-                ],
-                'timestamp' => round(microtime(true) * 1000),
-            ];
-            @file_put_contents($logFile, json_encode($payload) . PHP_EOL, FILE_APPEND);
-            Log::info('agent_debug', $payload);
-        } catch (\Throwable $e) {
-            // swallow logging errors
-        }
-        // #endregion
-
         return response()->json([
             'success' => true,
             'data' => $user
         ]);
+    }
+
+    /**
+     * Redirect to Google for authentication.
+     */
+    public function redirectToGoogle()
+    {
+        return response()->json([
+            'url' => Socialite::driver('google')->stateless()->redirect()->getTargetUrl()
+        ]);
+    }
+
+    /**
+     * Handle internal Google callback.
+     */
+    public function handleGoogleCallback()
+    {
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+            
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                // Create user if doesn't exist
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'password' => Hash::make(Str::random(24)),
+                ]);
+            } else {
+                // Update google_id and avatar
+                $user->update([
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                ]);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
+            return redirect()->away($frontendUrl . "/login/callback?token=$token");
+        } catch (\Exception $e) {
+            Log::error('Google Auth Error: ' . $e->getMessage());
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            return redirect()->away($frontendUrl . "/login?error=google_auth_failed");
+        }
     }
 }

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 export const ROLES = {
     SUPER_ADMIN: 'Super Admin',
     ADMIN_KEUANGAN: 'Admin Keuangan',
+    ADMIN_ZAKAT: 'Admin Zakat',
     USER_RT: 'User RT'
 };
 
@@ -66,20 +67,32 @@ export const RoleProvider = ({ children }) => {
         const actualPermId = PERMISSION_MAP[permIdOrLegacyName] || permIdOrLegacyName;
 
         // 3. Check Dynamic Permissions from Role
-        // Assuming user.person.assignments[0].role.permissions (if joined)
-        // Or we rely on what LoginPage stores.
-        const permissions = userData?.permissions || [];
-        if (permissions.includes(actualPermId)) return true;
+        const permissions = (userData?.permissions || []).map(p => p.toLowerCase());
+        const targetPermId = actualPermId.toLowerCase();
+        if (permissions.includes(targetPermId)) return true;
 
-        // 4. Legacy Hardcoded Fallback for old roles
-        if (currentRole === ROLES.ADMIN_KEUANGAN) {
-            const allowed = ['Dashboard', 'Donasi Tematik', 'Zakat Fitrah', 'Zakat Mal', 'Zakat Produktif', 'Sedekah', 'Santunan', 'Data Asnaf'];
-            if (allowed.includes(permIdOrLegacyName)) return true;
+        // 4. Legacy Hardcoded Fallback for old roles or name mismatches
+        const normalizedRole = (currentRole || '').toLowerCase();
+        const searchPerm = (permIdOrLegacyName || '').toLowerCase();
+
+        if (normalizedRole === ROLES.ADMIN_KEUANGAN.toLowerCase() ||
+            normalizedRole === ROLES.ADMIN_ZAKAT.toLowerCase() ||
+            normalizedRole === 'admin zakat') {
+            const allowed = [
+                'Dashboard', 'Donasi Tematik', 'Zakat Fitrah', 'Zakat Mal',
+                'Zakat Produktif', 'Sedekah', 'Santunan', 'Data Asnaf',
+                'manage_zakat_fitrah', 'manage_zakat_mall', 'manage_zakat_produktif',
+                'manage_sedekah', 'manage_santunan', 'manage_campaigns', 'manage_asnaf',
+                'manage_muzaki', 'delete_muzaki', 'edit_zakat_config', 'confirm_distribution',
+                'view_dashboard'
+            ].map(a => a.toLowerCase());
+
+            if (allowed.includes(searchPerm)) return true;
         }
 
-        if (currentRole === ROLES.USER_RT) {
-            const allowed = ['Sedekah', 'Dashboard'];
-            if (allowed.includes(permIdOrLegacyName)) return true;
+        if (normalizedRole === ROLES.USER_RT.toLowerCase()) {
+            const allowed = ['Sedekah', 'Dashboard', 'manage_sedekah', 'view_dashboard'].map(a => a.toLowerCase());
+            if (allowed.includes(searchPerm)) return true;
         }
 
         return false;

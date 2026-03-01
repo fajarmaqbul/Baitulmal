@@ -26,16 +26,24 @@ class AsnafObserver
 
     public function clearCacheAndBroadcast($tahun): void
     {
-        Log::debug("Observer: clearCacheAndBroadcast for year: {$tahun}");
+        Log::debug("Observer: clearCacheAndBroadcast (Asnaf) for year: {$tahun}");
         
         try {
-            $cacheKey = "mustahik_stats_summary_{$tahun}";
-            Cache::forget($cacheKey);
-            Log::info("Mustahik Stats Cache Cleared: {$tahun}");
+            // Dashboard Main Stats
+            Cache::forget("dashboard_stats_summary_{$tahun}");
+            
+            // Asnaf Management Stats
+            Cache::forget("asnaf_stats_summary_{$tahun}_all");
+            
+            // Public Site Performance Aggregation
+            Cache::forget("public_stats_aggregation_v2");
+            Cache::forget("public_live_stats");
+            
+            Log::info("Asnaf-related Caches Cleared: {$tahun}");
 
             broadcast(new MustahikUpdated($tahun));
         } catch (\Exception $e) {
-            Log::error("Observer Error: " . $e->getMessage());
+            Log::error("AsnafObserver Error: " . $e->getMessage());
         }
     }
 }

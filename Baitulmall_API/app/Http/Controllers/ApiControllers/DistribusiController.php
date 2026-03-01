@@ -54,11 +54,13 @@ class DistribusiController extends Controller
                     $created[] = $distribusi;
                 }
                 DB::commit();
+                $this->clearCache();
                 return response()->json(['success' => true, 'message' => 'Distribusi berhasil disimpan', 'data' => $created], 201);
             }
 
             // Single insert fallback (if any)
             $distribusi = Distribusi::create($request->all());
+            $this->clearCache();
             return response()->json(['success' => true, 'data' => $distribusi], 201);
 
         } catch (\Exception $e) {
@@ -84,6 +86,7 @@ class DistribusiController extends Controller
             return response()->json(['message' => 'Not found'], 404);
         }
         $distribusi->update($request->all());
+        $this->clearCache();
         return response()->json(['success' => true, 'data' => $distribusi]);
     }
 
@@ -94,7 +97,14 @@ class DistribusiController extends Controller
             return response()->json(['message' => 'Not found'], 404);
         }
         $distribusi->delete();
+        $this->clearCache();
         return response()->json(['success' => true, 'message' => 'Deleted']);
+    }
+
+    private function clearCache()
+    {
+        \Illuminate\Support\Facades\Cache::forget('public_stats_aggregation_v2');
+        \Illuminate\Support\Facades\Cache::forget('public_live_stats');
     }
 
     public function bulkDelete(Request $request)
@@ -106,6 +116,7 @@ class DistribusiController extends Controller
 
         try {
             Distribusi::whereIn('id', $ids)->delete();
+            $this->clearCache();
             return response()->json(['success' => true, 'message' => count($ids) . ' records deleted']);
         } catch (\Exception $e) {
             Log::error('Distribusi Bulk Delete Error: ' . $e->getMessage());
