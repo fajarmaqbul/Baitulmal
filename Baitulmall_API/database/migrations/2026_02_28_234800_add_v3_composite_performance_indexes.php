@@ -18,7 +18,7 @@ return new class extends Migration
         
         // Indexes for Distribusi and Zakat Fitrah
         DB::statement('CREATE INDEX IF NOT EXISTS distribusi_asnaf_tahun_index ON distribusi (asnaf_id, tahun)');
-        DB::statement('CREATE INDEX IF NOT EXISTS zakat_fitrah_tahun_rt_index ON zakat_fitrah (tahun_masehi, rt)');
+        DB::statement('CREATE INDEX IF NOT EXISTS zakat_fitrah_tahun_rt_index ON zakat_fitrah (tahun, rt_id)');
         
         // Index for performance in people and assignments
         DB::statement('CREATE INDEX IF NOT EXISTS assignments_structure_status_index ON assignments (organization_structure_id, status)');
