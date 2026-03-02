@@ -151,7 +151,7 @@ export const RoleProvider = ({ children }) => {
 
     const refreshUser = async () => {
         try {
-            const { getUser } = await import('../../services/authApi');
+            const { getUser } = await import('../services/authApi');
             const res = await getUser();
             if (res.success && res.data) {
                 const { role, perms } = deriveUserAccess(res.data);
