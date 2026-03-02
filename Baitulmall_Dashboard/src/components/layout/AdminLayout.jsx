@@ -5,12 +5,17 @@ import Navbar from './Navbar';
 import Footer from './Footer';
 import AIChatAssistant from '../AIChatAssistant';
 import { Bot, MessageSquare } from 'lucide-react';
+import { useRole } from '../../contexts/RoleContext';
 
 const AdminLayout = ({ children }) => {
     const navigate = useNavigate();
+    const { refreshUser } = useRole();
     const [isChatOpen, setIsChatOpen] = React.useState(false);
 
     useEffect(() => {
+        // Refresh permissions from server on mount to ensure dynamic sync
+        refreshUser();
+
         // Simple Auth Guard
         const token = localStorage.getItem('auth_token');
         if (!token) {

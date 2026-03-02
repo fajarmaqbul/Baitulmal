@@ -38,7 +38,7 @@ const SettingPage = () => {
     const [modal, setModal] = useState({ open: false, data: null });
     const [activeTab, setActiveTab] = useState('profil');
     const [saveStatus, setSaveStatus] = useState(null);
-    const { currentRole } = useRole();
+    const { currentRole, refreshUser, hasPermission } = useRole();
 
     // Role Management State
     const [roles, setRoles] = useState([]);
@@ -321,6 +321,7 @@ const SettingPage = () => {
             }
             setRoleModal({ open: false, data: null });
             await loadRoles();
+            await refreshUser();
             handleSaveStatus('success');
         } catch (err) {
             console.error('Failed to save role:', err);
@@ -635,7 +636,7 @@ const SettingPage = () => {
                                         <h3 className="text-xl font-bold flex items-center gap-3 text-slate-200">
                                             <Shield size={24} className="text-blue-500" /> Manajemen Role
                                         </h3>
-                                        {currentRole === ROLES.SUPER_ADMIN && (
+                                        {(currentRole === ROLES.SUPER_ADMIN || hasPermission('manage_roles')) && (
                                             <button
                                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-900/20"
                                                 onClick={() => setRoleModal({ open: true, data: null })}
@@ -672,7 +673,7 @@ const SettingPage = () => {
                                                             <td className="py-4 px-6 align-middle font-bold text-blue-400 group-hover:text-blue-300 transition-colors">{r.name}</td>
                                                             <td className="py-4 px-6 align-middle transition-colors" style={{ color: 'var(--text-muted)' }}>{r.description || '-'}</td>
                                                             <td className="py-4 px-4 align-middle text-center">
-                                                                {currentRole === ROLES.SUPER_ADMIN && (
+                                                                {(currentRole === ROLES.SUPER_ADMIN || hasPermission('manage_roles')) && (
                                                                     <div className="flex justify-center gap-2">
                                                                         <button
                                                                             className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"

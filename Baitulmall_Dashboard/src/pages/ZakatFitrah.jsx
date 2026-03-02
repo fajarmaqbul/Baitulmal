@@ -965,12 +965,16 @@ const ZakatFitrah = () => {
                             {rtList.map(rt => <option key={rt.kode} value={rt.kode}>RT {rt.kode}</option>)}
                         </select>
                     </div>
-                    <button type="submit" className="btn btn-primary">
-                        <Plus size={18} /> SIMPAN
-                    </button>
-                    <button type="button" className="btn btn-outline-danger" onClick={() => setFormData({ ...formData, nama: '', jumlahJiwa: '', rt: '01' })}>
-                        RESET
-                    </button>
+                    {hasPermission('Input Muzaki') && (
+                        <>
+                            <button type="submit" className="btn btn-primary">
+                                <Plus size={18} /> SIMPAN
+                            </button>
+                            <button type="button" className="btn btn-outline-danger" onClick={() => setFormData({ ...formData, nama: '', jumlahJiwa: '', rt: '01' })}>
+                                RESET
+                            </button>
+                        </>
+                    )}
                 </form>
             </div>
 

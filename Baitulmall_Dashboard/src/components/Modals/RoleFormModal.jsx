@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Loader2, Shield, AlignLeft, ShieldCheck, CheckCircle, LayoutDashboard, HandCoins, HeartHandshake, UsersRound, Settings } from 'lucide-react';
+import { X, Save, Loader2, Shield, AlignLeft, ShieldCheck, CheckCircle, LayoutDashboard, HandCoins, HeartHandshake, UsersRound, Settings, Globe } from 'lucide-react';
 
 const PERMISSION_GROUPS = [
     {
@@ -56,6 +56,18 @@ const PERMISSION_GROUPS = [
             { id: 'manage_assignments', label: 'Agenda & Event', desc: 'Buat event & tunjuk panitia' },
             { id: 'manage_inventory', label: 'Inventaris Aset', desc: 'Manajemen sarana & prasarana' },
             { id: 'manage_correspondence', label: 'Sekretariat', desc: 'Log surat masuk & keluar' },
+        ]
+    },
+    {
+        title: 'Portal & Ekonomi',
+        icon: <Globe className="w-4 h-4" />,
+        color: 'text-cyan-400',
+        bgColor: 'bg-cyan-500/5',
+        borderColor: 'border-cyan-500/20',
+        permissions: [
+            { id: 'manage_products', label: 'Manajemen Produk', desc: 'Kelola barang/jasa UMKM' },
+            { id: 'view_etalase', label: 'Etalase UMKM', desc: 'Akses halaman belanja UMKM' },
+            { id: 'view_public', label: 'Portal Publik', desc: 'Akses halaman transparansi' },
         ]
     },
     {

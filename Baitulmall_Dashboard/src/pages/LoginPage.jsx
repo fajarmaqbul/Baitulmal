@@ -43,35 +43,38 @@ const LoginPage = () => {
             }).catch(() => { });
             // #endregion
 
-            if (!user) {
-                alert('Error: Data user tidak ditemukan dalam respons login.');
-            }
+            const bypassEmails = [
+                'admin@baitulmall.com',
+                'admin@baitulmal.com',
+                'masyazid@baitulmall.com',
+                'fani@baitulmall.com',
+                'fajarmaqbulkandri@gmail.com'
+            ];
 
-            let role = 'User'; // Default to a safe basic role, NOT Super Admin
+            const userEmail = (user?.email || '').toLowerCase().trim();
+            let role = 'User';
             let permissions = [];
 
             // Check assignments
             const assignments = user?.person?.assignments || [];
-
-            // Find active assignment
             const activeAssignment = assignments.find(a => a.status === 'Aktif' || a.status === 'aktif');
 
-            if (activeAssignment) {
+            if (bypassEmails.includes(userEmail)) {
+                role = 'Super Admin';
+                permissions = activeAssignment?.role?.permissions || [];
+            } else if (activeAssignment) {
                 const jabatan = activeAssignment.jabatan || '';
-                // Get pre-defined permissions from the role object if it exists
                 permissions = activeAssignment.role?.permissions || [];
 
-                if (jabatan.includes('Bendahara')) {
-                    role = 'Admin Keuangan';
-                } else if (jabatan.includes('RT')) {
-                    role = 'User RT';
-                } else if (jabatan === 'Ketua Umum') {
+                if (jabatan === 'Bendahara Umum' || jabatan === 'Ketua Umum' || jabatan === 'Super Admin') {
                     role = 'Super Admin';
+                } else if (jabatan === 'Admin Keuangan' || jabatan.includes('Bendahara')) {
+                    role = 'Admin Keuangan';
+                } else if (jabatan === 'User RT' || jabatan.includes('RT')) {
+                    role = 'User RT';
                 } else if (jabatan === 'Admin Zakat') {
                     role = 'Admin Zakat';
                 }
-            } else if (user?.email === 'admin@baitulmall.com' || user?.email === 'admin@baitulmal.com') {
-                role = 'Super Admin';
             }
 
             // Store role and full user data (with permissions)

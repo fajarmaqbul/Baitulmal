@@ -2,16 +2,20 @@
     "version": 2,
     "functions": {
         "api/index.php": {
-            "runtime": "vercel-php@0.7.1"
+            "runtime": "vercel-php@0.7.1",
+            "memory": 512
         },
         "api/health.php": {
-            "runtime": "vercel-php@0.7.1"
+            "runtime": "vercel-php@0.7.1",
+            "memory": 256
         },
         "api/deploy.php": {
-            "runtime": "vercel-php@0.7.1"
+            "runtime": "vercel-php@0.7.1",
+            "memory": 512
         },
         "api/list-users.php": {
-            "runtime": "vercel-php@0.7.1"
+            "runtime": "vercel-php@0.7.1",
+            "memory": 256
         }
     },
     "routes": [
